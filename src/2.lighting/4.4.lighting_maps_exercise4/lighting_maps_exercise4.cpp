@@ -206,9 +206,14 @@ int main()
         lightingShader.setMat4("projection", projection);
         lightingShader.setMat4("view", view);
 
-        // world transformation
-        glm::mat4 model = glm::mat4(1.0f);
-        lightingShader.setMat4("model", model);
+		// world transformation
+		glm::mat4 model = glm::mat4(1.0f);
+		static float angle = 15;
+		angle = angle + 0.05;
+		if (angle > 360.0) angle = 0;
+		model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0, 1.0, 0.0));
+		model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0, 0.0, 0.0));
+		lightingShader.setMat4("model", model);
 
         // bind diffuse map
         glActiveTexture(GL_TEXTURE0);

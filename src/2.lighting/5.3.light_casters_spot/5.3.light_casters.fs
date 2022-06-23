@@ -34,7 +34,7 @@ void main()
 {
     vec3 lightDir = normalize(light.position - FragPos);
     
-    // check if lighting is inside the spotlight cone
+    // check if lighting is inside the spotlight cone  light.direction这里是指从光源出发
     float theta = dot(lightDir, normalize(-light.direction)); 
     
     if(theta > light.cutOff) // remember that we're working with angles as cosines instead of degrees so a '>' is used.
