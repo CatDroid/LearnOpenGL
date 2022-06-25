@@ -20,6 +20,8 @@
 #include <iostream>
 #include <map>
 #include <vector>
+#include "Resource.h"
+
 using namespace std;
 
 unsigned int TextureFromFile(const char *path, const string &directory, bool gamma = false);
@@ -115,7 +117,12 @@ private:
         for(unsigned int i = 0; i < mesh->mNumVertices; i++)
         {
             Vertex vertex;
-            glm::vec3 vector; // we declare a placeholder vector since assimp uses its own vector class that doesn't directly convert to glm's vec3 class so we transfer the data to this placeholder glm::vec3 first.
+            glm::vec3 vector;
+            // we declare a placeholder vector since assimp uses its own vector class that doesn't directly convert to glm's vec3 class so we transfer the data to this placeholder glm::vec3 first.
+            
+            // assimp储存数据 按照 mVertices mNormals mTextureCoords mTangents mBitangents 分开所有顶点属性存放的
+            // 而自定义的Vertex是把每个顶点属性都包含在一个结构体中 -- SOA AOS的区别
+            
             // positions
             vector.x = mesh->mVertices[i].x;
             vector.y = mesh->mVertices[i].y;
@@ -135,6 +142,10 @@ private:
                 glm::vec2 vec;
                 // a vertex can contain up to 8 different texture coordinates. We thus make the assumption that we won't 
                 // use models where a vertex can have multiple texture coordinates so we always take the first set (0).
+                //
+                // Assimp允许一个模型在一个顶点上有最多8个不同的纹理坐标
+                // 我们不会用到那么多，我们只关心第一组纹理坐标。
+                //
                 vec.x = mesh->mTextureCoords[0][i].x; 
                 vec.y = mesh->mTextureCoords[0][i].y;
                 vertex.TexCoords = vec;
@@ -156,6 +167,8 @@ private:
         }
         
         // Part.2 索引(面/图元), 现在遍历网格的每个面（一个面是网格中的一个的三角形）并检索相应的顶点索引
+        //                     Assimp定义了每个网格都有一个面(Face)数组.每个面代表了一个图元.
+        //                     由于使用了aiProcess_Triangulate选项）它总是三角形
         // now wak through each of the mesh's faces (a face is a mesh its triangle) and retrieve the corresponding vertex indices.
         for(unsigned int i = 0; i < mesh->mNumFaces; i++)
         {
@@ -167,7 +180,7 @@ private:
         
         // Part.3 获取这个网格mesh对应的材质参数:漫反射贴图, 高光贴图 , 法线贴图, 高度贴图
         // process materials
-        aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];    
+        aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];   // 网格材质索引  mesh->mMaterialIndex
         // we assume a convention for sampler names in the shaders. Each diffuse texture should be named
         // as 'texture_diffuseN' where N is a sequential number ranging from 1 to MAX_SAMPLER_NUMBER. 
         // Same applies to other texture as the following list summarizes:
@@ -211,6 +224,21 @@ private:
             //
             // 每种功能类型纹理的个数 aiTextureType_DIFFUSE aiTextureType_SPECULAR aiTextureType_HEIGHT aiTextureType_AMBIENT
             
+            /* 注意:
+                  对于自带材质的fbx模型，内置材质是存在aiScene中的，所以要从aiScene读取内置材质aiTexture(也就是不用我们自己加载图片文件,因为图片在fbx中)
+             
+                    auto aitexture = scene->GetEmbeddedTexture(name.C_Str());
+                    if (aitexture != nullptr)
+                        tex.id = Resource::LoadTextureFromAssImp(aitexture, GL_CLAMP, GL_LINEAR, GL_LINEAR);
+                    else
+                        tex.id = Resource::LoadTexture(filePath.c_str(), GL_REPEAT, GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR);
+             
+                  材质图片的绝对路径
+                    mtl本身是一个文本文件，可以用记事本打开，
+                    把一些贴图的绝对路径比如C://tex1.jpg这样的修改成tex1.jpg这样的相对路径，
+                    然后把贴图和模型扔在同一个文件夹里应该就能正常读取了
+            
+            */
             
             // 获取某个功能类型纹理的 第i个 的路径str
             // 注意: brew install assimp 安装的话，需要把 /usr/local/include/assimp 更新到 LearnOpenGL/include/assimp/ 目录
@@ -254,6 +282,7 @@ unsigned int TextureFromFile(const char *path, const string &directory, bool gam
     string filename = string(path);
     filename = directory + '/' + filename;
 
+    /*
     unsigned int textureID;
     glGenTextures(1, &textureID);
 
@@ -287,7 +316,8 @@ unsigned int TextureFromFile(const char *path, const string &directory, bool gam
         std::cout << "Texture failed to load at path: " << path << std::endl;
         stbi_image_free(data);
     }
-
-    return textureID;
+    */
+    
+    return Resource::LoadTexture(filename.c_str(), GL_REPEAT, GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR, true);
 }
 #endif

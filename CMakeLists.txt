@@ -196,6 +196,10 @@ set(LIBS ${LIBS} STB_IMAGE)
 add_library(GLAD "src/glad.c")
 set(LIBS ${LIBS} GLAD)
 
+add_library(RESOURCE "src/Resource.cpp")
+target_include_directories(RESOURCE PRIVATE "../includes/")
+set(LIBS ${LIBS} RESOURCE)
+
 macro(makeLink src dest target)
   add_custom_command(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${src} ${dest}  DEPENDS  ${dest} COMMENT "mklink ${src} -> ${dest}")
 endmacro()
