@@ -211,8 +211,8 @@ int main()
     */
     // load models
     // -----------
-    Model ourModel(FileSystem::getPath("resources/objects/backpack/backpack.obj"));
-
+    //Model ourModel(FileSystem::getPath("resources/objects/backpack/backpack.obj"));
+    Model ourModel(FileSystem::getPath("resources/objects/nanosuit/nanosuit.obj"));
     
     // draw in wireframe
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -238,18 +238,34 @@ int main()
 
         // don't forget to enable shader before setting uniforms
         ourShader.use();
+        
+        
+        
+        // light properties  设置通用uniform--光源信息
+        //ourShader.setVec3("light.ambient", 0.2f, 0.2f, 0.2f); // 使用Ka Kd Ks代替 
+        //ourShader.setVec3("light.diffuse", 0.5f, 0.5f, 0.5f);
+        //ourShader.setVec3("light.specular", 1.0f, 1.0f, 1.0f);
+        ourShader.setVec3("light.direction", -0.0f, -0.0f, 1.0f); // 指向光的方向 不是光传播的方向 
+        
 
-        // view/projection transformations
+        // view/projection transformations 设置通用uniform--VP信息
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         glm::mat4 view = camera.GetViewMatrix();
         ourShader.setMat4("projection", projection);
         ourShader.setMat4("view", view);
-
-        // render the loaded model
+        
+        
+        // camera postion  设置通用uniform--相机位置
+        ourShader.setVec3("viewPos", camera.Position);
+        
+        
+        // render the loaded model 设置各自的uniform信息
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // translate it down so it's at the center of the scene
         model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));	// it's a bit too big for our scene, so scale it down
         ourShader.setMat4("model", model);
+        
+        // Draw整个模型 (内部会设置 texture的纹理uniform 和 VAO VEO等
         ourModel.Draw(ourShader);
 
 

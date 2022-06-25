@@ -44,6 +44,11 @@ public:
     vector<unsigned int> indices;
     vector<Texture>      textures;
     unsigned int VAO;
+    
+    glm::vec4 ka;
+    glm::vec4 kd;
+    glm::vec4 ks;
+    float shininess = 0;
 
     // constructor
     Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures)
@@ -78,8 +83,8 @@ public:
             string name = textures[i].type;
             
             //
-            // shader中Sampler2D应该按照 texture_diffuse0 texture_normal0 等命名方式
-            // material.texture_diffuse0  material.texture_diffuse1
+            // shader中Sampler2D应该按照 texture_diffuse1 texture_normal1 等命名方式
+            // material.texture_diffuse1  material.texture_diffuse2 (从1开始,但是纹理单元从0开始)
             //
             if(name == "texture_diffuse")
                 number = std::to_string(diffuseNr++);
@@ -99,6 +104,14 @@ public:
             // and finally bind the texture
             glBindTexture(GL_TEXTURE_2D, textures[i].id);
         }
+        
+   
+        glUniform3f(glGetUniformLocation(shader.ID, "Ka"),  ka.x, ka.y, ka.z );
+        glUniform3f(glGetUniformLocation(shader.ID, "Kd"),  kd.x, kd.y, kd.z );
+        glUniform3f(glGetUniformLocation(shader.ID, "Ks"),  ks.x, ks.y, ks.z );
+        glUniform1f(glGetUniformLocation(shader.ID, "shininess"), shininess);
+        
+        
         
         // draw mesh
         glBindVertexArray(VAO);

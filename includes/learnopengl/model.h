@@ -101,11 +101,22 @@ private:
         }
 
     }
+    
+    
+    std::string vec4ToString(glm::vec4 v4)
+    {
+        stringstream ss;
+        ss << "{" << v4.x << "," <<  v4.y << "," << v4.z << "," << v4.w << "}" ;
+        return ss.str();
+    }
 
     // 一个node可能有多个mesh  每个mesh有自己的材质
     // 返回自定义的mesh  一个mesh有自己的网格
     Mesh processMesh(aiMesh *mesh, const aiScene *scene)
     {
+        
+        std::cout << "mesh name: " << mesh->mName.C_Str() << std::endl;
+        
         // data to fill
         vector<Vertex> vertices;
         vector<unsigned int> indices;
@@ -187,6 +198,91 @@ private:
         // diffuse: texture_diffuseN
         // specular: texture_specularN
         // normal: texture_normalN
+        
+        
+        /*
+            LEGACY API MATERIALS
+                Legacy 是指最初在 2000 年左右在规范中实施的材料。这些材料绝不能被删除，因为大多数引擎都支持它们。
+         
+         */
+        if (material->GetTextureCount(aiTextureType_AMBIENT))
+        std::cout << "aiTextureType_AMBIENT:          " <<material->GetTextureCount(aiTextureType_AMBIENT)      << std::endl; // Phong模型的环境光贴图 ambient lighting equation.
+        if (material->GetTextureCount(aiTextureType_DIFFUSE))
+        std::cout << "aiTextureType_DIFFUSE:          " <<material->GetTextureCount(aiTextureType_DIFFUSE)      << std::endl;
+        if (material->GetTextureCount(aiTextureType_SPECULAR))
+        std::cout << "aiTextureType_SPECULAR:         " <<material->GetTextureCount(aiTextureType_SPECULAR)     << std::endl; // Phong模型的镜面贴图  或者 PBR Specular/Glossiness 高光光泽度贴图
+        if (material->GetTextureCount(aiTextureType_NORMALS))
+        std::cout << "aiTextureType_NORMALS:          " <<material->GetTextureCount(aiTextureType_NORMALS)      << std::endl; // 纹理是（切线空间）法线贴图。 同样，????切线空间法线贴图有"几个约定???"。 Assimp 确实（故意）不在这里区分。
+        if (material->GetTextureCount(aiTextureType_HEIGHT))
+        std::cout << "aiTextureType_HEIGHT:           " <<material->GetTextureCount(aiTextureType_HEIGHT)       << std::endl; // 按照惯例，较高的灰度值代表从基本高度开始的较高海拔。
+        if (material->GetTextureCount(aiTextureType_SHININESS))
+        std::cout << "aiTextureType_SHININESS:        " <<material->GetTextureCount(aiTextureType_SHININESS)    << std::endl; // 纹理定义了材质的光泽度。 光泽度实际上是镜面反射（phong）光照方程的指数。 ???通常会定义一个转换函数来将纹理中的线性颜色值映射到合适的指数???。
+        if (material->GetTextureCount(aiTextureType_OPACITY))
+        std::cout << "aiTextureType_OPACITY:          " <<material->GetTextureCount(aiTextureType_OPACITY)      << std::endl; // 纹理定义了每像素的不透明度。 通常“白色”表示不透明，“黑色”表示“透明”。 或者恰恰相反。
+        if (material->GetTextureCount(aiTextureType_DISPLACEMENT))
+        std::cout << "aiTextureType_DISPLACEMENT:     " <<material->GetTextureCount(aiTextureType_DISPLACEMENT) << std::endl; // 位移纹理?? 确切的目的和格式取决于应用程序。 较高的颜色值代表较高的顶点位移。
+        if (material->GetTextureCount(aiTextureType_LIGHTMAP))
+        std::cout << "aiTextureType_LIGHTMAP:        " <<material->GetTextureCount(aiTextureType_LIGHTMAP)      << std::endl; // 光照贴图纹理（又名环境光遮蔽） 此材质属性涵盖“光照贴图”和专用的“环境遮挡贴图”。 纹理包含像素最终颜色值的缩放值。 它的强度不受入射光的影响。
+        if (material->GetTextureCount(aiTextureType_REFLECTION))
+        std::cout << "aiTextureType_REFLECTION:      " <<material->GetTextureCount(aiTextureType_REFLECTION)   << std::endl; // 反射纹理  包含完美镜面反射的颜色。 很少使用，几乎从不用于实时应用程序。
+
+      
+        /*
+            PBR Materials
+                Maya 和其他建模包中的 PBR 定义现在使用此标准。这最初是在 2012 年左右引入的。Godot、Unreal 或 Unity3D 等游戏引擎对此提供了支持。
+                使用它的建模包现在非常普遍。
+        */
+        
+        if (material->GetTextureCount(aiTextureType_BASE_COLOR))
+        std::cout << "aiTextureType_BASE_COLOR:               " << material->GetTextureCount(aiTextureType_BASE_COLOR)      << std::endl;
+        if (material->GetTextureCount(aiTextureType_NORMAL_CAMERA))
+        std::cout << "aiTextureType_NORMAL_CAMERA:            " << material->GetTextureCount(aiTextureType_NORMAL_CAMERA)   << std::endl;
+        if (material->GetTextureCount(aiTextureType_EMISSION_COLOR))
+        std::cout << "aiTextureType_EMISSION_COLOR:           " << material->GetTextureCount(aiTextureType_EMISSION_COLOR)  << std::endl;
+        if (material->GetTextureCount(aiTextureType_METALNESS))
+        std::cout << "aiTextureType_METALNESS:                " << material->GetTextureCount(aiTextureType_METALNESS)       << std::endl;  // 金属度
+        if (material->GetTextureCount(aiTextureType_DIFFUSE_ROUGHNESS))
+        std::cout << "aiTextureType_DIFFUSE_ROUGHNESS:        " << material->GetTextureCount(aiTextureType_DIFFUSE_ROUGHNESS) << std::endl;// 粗糙度
+        if (material->GetTextureCount(aiTextureType_AMBIENT_OCCLUSION))
+        std::cout << "aiTextureType_AMBIENT_OCCLUSION:        " << material->GetTextureCount(aiTextureType_AMBIENT_OCCLUSION) << std::endl; // AO环境遮挡
+        
+        /*
+            PBR Material Modifiers
+                一些现代渲染器具有更多的 PBR 修改器，
+                这些修改器可能会覆盖在“基础”PBR 材质(the 'base' PBR materials)之上，以获得额外的真实感。
+                这些使用了多个纹理贴图，所以只直接定义了基本类型
+         */
+        
+        // sheen 关泽 -- 通常用于模拟覆盖有一层超细纤维的纺织品。 例如天鹅绒
+        if (material->GetTextureCount(aiTextureType_SHEEN) )
+        std::cout << "aiTextureType_SHEEN:        " << material->GetTextureCount(aiTextureType_SHEEN)           << std::endl;
+        // 模拟 PBR 基材顶部的一层“抛光”或“漆”  Simulates a layer of 'polish' or 'laquer' layered on top of a PBR substrate
+        if (material->GetTextureCount(aiTextureType_CLEARCOAT) )
+        std::cout << "aiTextureType_CLEARCOAT:    " << material->GetTextureCount(aiTextureType_CLEARCOAT)       << std::endl;
+        // 模拟表面透射，包括更多信息，例如壁厚  Simulates transmission through the surface May include further information such as wall thickness
+        if (material->GetTextureCount(aiTextureType_TRANSMISSION) )
+        std::cout << "aiTextureType_TRANSMISSION: " <<  material->GetTextureCount(aiTextureType_TRANSMISSION)   << std::endl;
+        
+    
+        aiColor3D color;
+        material->Get(AI_MATKEY_COLOR_AMBIENT, color);
+        glm::vec4 Ka = glm::vec4(color.r, color.g, color.b, 1.0);
+        material->Get(AI_MATKEY_COLOR_DIFFUSE, color);
+        glm::vec4 Kd = glm::vec4(color.r, color.g, color.b, 1.0);
+        material->Get(AI_MATKEY_COLOR_SPECULAR, color);
+        glm::vec4 Ks = glm::vec4(color.r, color.g, color.b, 1.0);
+        float shininess = 0;
+        material->Get(AI_MATKEY_SHININESS, shininess);
+        
+        // 介质的折射率 n等于光在真空中的速度c 跟光在介质中的相速度v 之比 n=c/v  斯涅耳定律折射 n1 * sinθ1 = n2 * sinθ2
+        float refractiveIndex = 1.0;
+        material->Get(AI_MATKEY_REFRACTI, refractiveIndex);
+        std::cout << "Phong---- Ka:" << vec4ToString(Ka) <<" Kd:" << vec4ToString(Kd) << " Ks:" << vec4ToString(Ks) << " shininess:" << shininess << " refractiveIndex:" << refractiveIndex << std::endl;
+        
+        
+        // material properties
+        //lightingShader.setFloat("material.shininess", 64.0f);
+        
 
         // 1. diffuse maps
         vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
@@ -196,11 +292,15 @@ private:
         textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
         
         // 3. normal maps ??? 为什么这个type是 HEIGHT ??
+        //     wavefront object format (.obj) 导出的法线贴图与 Assimp 的"约定" 略有不同，因为 aiTextureType_NORMAL 不加载法线贴图，而是 aiTextureType_HEIGHT
         std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
+        //std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, "texture_normal");
         textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
         
         // 4. height maps ???? 这个是ambient ????
-        std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height");
+        //    Assimp并不支持反射贴图，我们可以使用环境贴图的方式将反射贴图从aiTextureType_AMBIENT类型中来加载反射贴图的材质  所以mtl文件中 map_Ka helmet_showroom_refl.png
+        std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_refl"); //"texture_height");
+        //std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_height");
         textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
         
         // 目前三个纹理图:
@@ -210,7 +310,13 @@ private:
         
         
         // return a mesh object created from the extracted mesh data
-        return Mesh(vertices, indices, textures); // 每个mesh包含的三种数据 顶点 索引 纹理
+        Mesh temp (vertices, indices, textures); // 每个mesh包含的三种数据 顶点 索引 纹理
+        temp.ka = Ka;
+        temp.kd = Kd;
+        temp.ks = Ks ;
+        temp.shininess = shininess;
+        
+        return temp;
     }
 
     // checks all material textures of a given type and loads the textures if they're not loaded yet.
@@ -246,6 +352,8 @@ private:
             //
             aiString str;
             mat->GetTexture(type, i, &str);
+            
+            std::cout << "name = " << str.C_Str() << "; type = " << typeName << std::endl;
             
             
             // check if texture was loaded before and if so, continue to next iteration: skip loading a new texture
