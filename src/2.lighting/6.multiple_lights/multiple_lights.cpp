@@ -221,7 +221,7 @@ int main()
         lightingShader.setVec3("dirLight.ambient", 0.05f, 0.05f, 0.05f);
         lightingShader.setVec3("dirLight.diffuse", 0.4f, 0.4f, 0.4f);
         lightingShader.setVec3("dirLight.specular", 0.5f, 0.5f, 0.5f);
-        // point light 1  ½á¹¹ÌåÊý×é  CPUÒ²¿ÉÒÔ¸úgpuÒ»Ñù·ÃÎÊ·½Ê½ : Êý×é±äÁ¿Ãû×Ö[Ë÷Òý].½á¹¹Ìå³ÉÔ±
+        // point light 1  ï¿½á¹¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½  CPUÒ²ï¿½ï¿½ï¿½Ô¸ï¿½gpuÒ»ï¿½ï¿½ï¿½ï¿½ï¿½Ê·ï¿½Ê½ : ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½ï¿½].ï¿½á¹¹ï¿½ï¿½ï¿½Ô±
         lightingShader.setVec3("pointLights[0].position", pointLightPositions[0]);
         lightingShader.setVec3("pointLights[0].ambient", 0.05f, 0.05f, 0.05f);
         lightingShader.setVec3("pointLights[0].diffuse", 0.8f, 0.8f, 0.8f);
@@ -273,6 +273,8 @@ int main()
 
         // world transformation
         glm::mat4 model = glm::mat4(1.0f);
+ 
+        
         lightingShader.setMat4("model", model);
 
         // bind diffuse map
@@ -291,6 +293,14 @@ int main()
             model = glm::translate(model, cubePositions[i]);
             float angle = 20.0f * i;
             model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+            
+            static float degree = 0.0 ;  // è‡ªåŠ¨æ—‹è½¬æ‰€æœ‰ç›’å­ æ–¹ä¾¿è§‚çœ‹å„æ–¹å‘å…‰ç…§ç€è‰²
+            degree = degree + 0.04 ;
+            if (degree > 360) degree = 0.0;
+            model = glm::rotate(model, glm::radians(degree), glm::vec3(1.0f, 0.0f, 0.0f));
+            model = glm::rotate(model, glm::radians(degree), glm::vec3(0.0f, 1.0f, 0.0f));
+            
+            
             lightingShader.setMat4("model", model);
 
             glDrawArrays(GL_TRIANGLES, 0, 36);

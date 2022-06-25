@@ -26,7 +26,7 @@ struct Vertex {
     // bitangent
     glm::vec3 Bitangent;
 	//bone indexes which will influence this vertex
-	int m_BoneIDs[MAX_BONE_INFLUENCE];
+	int m_BoneIDs[MAX_BONE_INFLUENCE]; // 骨骼数目?? 4个 ???
 	//weights from each bone
 	float m_Weights[MAX_BONE_INFLUENCE];
 };
@@ -59,17 +59,28 @@ public:
     // render the mesh
     void Draw(Shader &shader) 
     {
+        //
+        // shader开发者也可以自由选择需要使用的数量，他只需要定义正确的采样器就可以了
+        //（虽然定义少的话会有点浪费绑定和uniform调用）
+        //
         // bind appropriate textures
         unsigned int diffuseNr  = 1;
         unsigned int specularNr = 1;
         unsigned int normalNr   = 1;
         unsigned int heightNr   = 1;
+        
+        
         for(unsigned int i = 0; i < textures.size(); i++)
         {
-            glActiveTexture(GL_TEXTURE0 + i); // active proper texture unit before binding
+            glActiveTexture(GL_TEXTURE0 + i); // active proper texture unit before binding 纹理单元从 GL_TEXTURE0 开始, 对应uniform从0开始
             // retrieve texture number (the N in diffuse_textureN)
             string number;
             string name = textures[i].type;
+            
+            //
+            // shader中Sampler2D应该按照 texture_diffuse0 texture_normal0 等命名方式
+            // material.texture_diffuse0  material.texture_diffuse1
+            //
             if(name == "texture_diffuse")
                 number = std::to_string(diffuseNr++);
             else if(name == "texture_specular")
@@ -79,8 +90,12 @@ public:
              else if(name == "texture_height")
                 number = std::to_string(heightNr++); // transfer unsigned int to string
 
+            //
+            // shader中的采样器 绑定到 纹理单元(??这样不是绑定到采样器,所以用纹理的参数来filter和wrapper???)
             // now set the sampler to the correct texture unit
+            //
             glUniform1i(glGetUniformLocation(shader.ID, (name + number).c_str()), i);
+            
             // and finally bind the texture
             glBindTexture(GL_TEXTURE_2D, textures[i].id);
         }
@@ -109,12 +124,16 @@ private:
         glBindVertexArray(VAO);
         // load data into vertex buffers
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        
+        // C++结构体有一个很棒的特性，它们的内存布局是连续的(Sequential)。 ??? 应该是有对齐 ???
+        // structs 的一大优点是它们的内存布局对于它的所有项目都是连续的。
+        // 效果是我们可以简单地传递一个指向结构的指针，它完美地转换为 glm::vec3/2 数组，该数组再次转换为 3/2 浮点数，后者转换为字节数组。
         // A great thing about structs is that their memory layout is sequential for all its items.
         // The effect is that we can simply pass a pointer to the struct and it translates perfectly to a glm::vec3/2 array which
         // again translates to 3/2 floats which translates to a byte array.
         glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), &vertices[0], GL_STATIC_DRAW);  
 
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO); // 指定了索引buffer 这样glDrawElements不用传buffer参数,而是根据VAO中 GL_ELEMENT_ARRAY_BUFFER 绑定的ebo
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
 
         // set the vertex attribute pointers
@@ -123,23 +142,27 @@ private:
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
         // vertex normals
         glEnableVertexAttribArray(1);	
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Normal));
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Normal)); // offsetof 结构体成员的偏移
         // vertex texture coords
         glEnableVertexAttribArray(2);	
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, TexCoords));
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, TexCoords)); // sizeof 每个顶点的对齐
         // vertex tangent
         glEnableVertexAttribArray(3);
         glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Tangent));
         // vertex bitangent
         glEnableVertexAttribArray(4);
         glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Bitangent));
+        
+        
 		// ids
 		glEnableVertexAttribArray(5);
-		glVertexAttribIPointer(5, 4, GL_INT, sizeof(Vertex), (void*)offsetof(Vertex, m_BoneIDs));
+		glVertexAttribIPointer(5, 4, GL_INT, sizeof(Vertex), (void*)offsetof(Vertex, m_BoneIDs));           // ??? 骨骼id ???
 
 		// weights
 		glEnableVertexAttribArray(6);
-		glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, m_Weights));
+		glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, m_Weights)); // ??? 骨骼权重 ???
+        
+        
         glBindVertexArray(0);
     }
 };
