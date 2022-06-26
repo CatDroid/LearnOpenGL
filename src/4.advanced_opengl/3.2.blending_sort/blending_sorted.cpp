@@ -220,11 +220,11 @@ int main()
 
         // sort the transparent windows before rendering
         // ---------------------------------------------
-        std::map<float, glm::vec3> sorted;
+        std::map<float, glm::vec3> sorted; // 先排序
         for (unsigned int i = 0; i < windows.size(); i++)
         {
-            float distance = glm::length(camera.Position - windows[i]);
-            sorted[distance] = windows[i];
+            float distance = glm::length(camera.Position - windows[i]); // 按照与相机的距离
+            sorted[distance] = windows[i]; // std::map 红黑树是有序的  key是距离
         }
 
         // render
@@ -239,6 +239,8 @@ int main()
         glm::mat4 model = glm::mat4(1.0f);
         shader.setMat4("projection", projection);
         shader.setMat4("view", view);
+        
+        
         // cubes
         glBindVertexArray(cubeVAO);
         glActiveTexture(GL_TEXTURE0);
@@ -250,21 +252,25 @@ int main()
         model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
         shader.setMat4("model", model);
         glDrawArrays(GL_TRIANGLES, 0, 36);
+        
+        
         // floor
         glBindVertexArray(planeVAO);
         glBindTexture(GL_TEXTURE_2D, floorTexture);
         model = glm::mat4(1.0f);
         shader.setMat4("model", model);
         glDrawArrays(GL_TRIANGLES, 0, 6);
+        
+        
         // windows (from furthest to nearest)
         glBindVertexArray(transparentVAO);
         glBindTexture(GL_TEXTURE_2D, transparentTexture);
-        for (std::map<float, glm::vec3>::reverse_iterator it = sorted.rbegin(); it != sorted.rend(); ++it)
+        for (std::map<float, glm::vec3>::reverse_iterator it = sorted.rbegin(); it != sorted.rend(); ++it) // reverse_iterator 反向迭代，从大到小/从远到近
         {
             model = glm::mat4(1.0f);
-            model = glm::translate(model, it->second);
+            model = glm::translate(model, it->second); // it->second 其实对应的是 windows[i]
             shader.setMat4("model", model);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
+            glDrawArrays(GL_TRIANGLES, 0, 6);          // 注意这里渲染半透明物体的时候 没有关闭深度测试和深度写入(一般都关闭深度写入的)
         }
 
 
