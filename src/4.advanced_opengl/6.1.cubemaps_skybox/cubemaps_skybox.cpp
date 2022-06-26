@@ -183,7 +183,9 @@ int main()
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-    // skybox VAO
+    
+	
+	// skybox VAO
     unsigned int skyboxVAO, skyboxVBO;
     glGenVertexArrays(1, &skyboxVAO);
     glGenBuffers(1, &skyboxVBO);
@@ -203,9 +205,12 @@ int main()
         FileSystem::getPath("resources/textures/skybox/left.jpg"),
         FileSystem::getPath("resources/textures/skybox/top.jpg"),
         FileSystem::getPath("resources/textures/skybox/bottom.jpg"),
-        FileSystem::getPath("resources/textures/skybox/front.jpg"),
+        FileSystem::getPath("resources/textures/skybox/front.jpg"), // POSITIVE_Z 实际这个在后面
         FileSystem::getPath("resources/textures/skybox/back.jpg")
     };
+	// 注意GL_TEXTURE_CUBE_MAP_POSITIVE_Z	的是back 
+	// 跟文档 这里的front和back反了 
+
     unsigned int cubemapTexture = loadCubemap(faces);
 
     // shader configuration
@@ -250,15 +255,20 @@ int main()
         glDrawArrays(GL_TRIANGLES, 0, 36);
         glBindVertexArray(0);
 
-        // draw skybox as last
+		// glDepthMask(GL_FALSE); 文档用的是 关闭深度写入 而且是第一个画的
+		// 但很多引擎都放在opaque队列后 渲染 
+
+        // draw skybox as last GL_LEQUAL ?? 深度一样的话还是用天空盒代替???
         glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
         skyboxShader.use();
+
+		// 注意观察矩阵 也会有位移 ，所以要把view中移除掉位移，只需要3x3的矩阵
         view = glm::mat4(glm::mat3(camera.GetViewMatrix())); // remove translation from the view matrix
         skyboxShader.setMat4("view", view);
         skyboxShader.setMat4("projection", projection);
         // skybox cube
         glBindVertexArray(skyboxVAO);
-        glActiveTexture(GL_TEXTURE0);
+        glActiveTexture(GL_TEXTURE0); // 这里要绑定到纹理单元0 的目标是 GL_TEXTURE_CUBE_MAP 
         glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
         glDrawArrays(GL_TRIANGLES, 0, 36);
         glBindVertexArray(0);
@@ -396,7 +406,8 @@ unsigned int loadCubemap(vector<std::string> faces)
         unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
         if (data)
         {
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,  // 指定那个side 直接用+i
+				0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
             stbi_image_free(data);
         }
         else
@@ -411,5 +422,20 @@ unsigned int loadCubemap(vector<std::string> faces)
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
+	/*
+	S T R 
+
+	GL_TEXTURE_WRAP_R ???
+
+	它仅仅是为纹理的R坐标设置了环绕方式，它对应的是纹理的第三个维度（和位置的z一样）
+
+	因为正好处于两个面之间的纹理坐标可能不能击中一个面（由于一些硬件限制），
+
+	所以通过使用GL_CLAMP_TO_EDGE (将环绕方式设置为GL_CLAMP_TO_EDGE)，
+
+	OpenGL将在我们对两个面之间采样的时候，永远返回它们的边界值
+
+
+	*/
     return textureID;
 }
