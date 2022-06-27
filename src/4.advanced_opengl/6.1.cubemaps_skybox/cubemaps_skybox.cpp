@@ -127,7 +127,7 @@ int main()
         -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
         -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
     };
-    float skyboxVertices[] = {
+    float skyboxVertices[] = {  // å¤©ç©ºç›’å­ åªæœ‰-1åˆ°1 è¿™ä¹ˆå¤§
         // positions          
         -1.0f,  1.0f, -1.0f,
         -1.0f, -1.0f, -1.0f,
@@ -205,11 +205,11 @@ int main()
         FileSystem::getPath("resources/textures/skybox/left.jpg"),
         FileSystem::getPath("resources/textures/skybox/top.jpg"),
         FileSystem::getPath("resources/textures/skybox/bottom.jpg"),
-        FileSystem::getPath("resources/textures/skybox/front.jpg"), // POSITIVE_Z Êµ¼ÊÕâ¸öÔÚºóÃæ
+        FileSystem::getPath("resources/textures/skybox/front.jpg"), // POSITIVE_Z å®é™…è¿™ä¸ªåœ¨åé¢
         FileSystem::getPath("resources/textures/skybox/back.jpg")
     };
-	// ×¢ÒâGL_TEXTURE_CUBE_MAP_POSITIVE_Z	µÄÊÇback 
-	// ¸úÎÄµµ ÕâÀïµÄfrontºÍback·´ÁË 
+	// æ³¨æ„GL_TEXTURE_CUBE_MAP_POSITIVE_Z	çš„æ˜¯back 
+	// è·Ÿæ–‡æ¡£ è¿™é‡Œçš„frontå’Œbackåäº† 
 
     unsigned int cubemapTexture = loadCubemap(faces);
 
@@ -240,39 +240,109 @@ int main()
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // draw scene as normal
-        shader.use();
-        glm::mat4 model = glm::mat4(1.0f);
-        glm::mat4 view = camera.GetViewMatrix();
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-        shader.setMat4("model", model);
-        shader.setMat4("view", view);
-        shader.setMat4("projection", projection);
-        // cubes
-        glBindVertexArray(cubeVAO);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, cubeTexture);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-        glBindVertexArray(0);
+        
+#if 0  // å…ˆæ¸²æŸ“å¤©ç©ºç›’
+    
+        {
+           
+            //glDisable(GL_DEPTH_TEST);
+            glDepthMask(GL_FALSE);      // ä¸åšæ·±åº¦å†™å…¥ ä½†æ˜¯è¿˜æ˜¯ä¿ç•™æ·±åº¦æµ‹è¯•
+            skyboxShader.use();
+            glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+            glm::mat4 view = glm::mat4(glm::mat3(camera.GetViewMatrix()));
+            skyboxShader.setMat4("view", view); // ASDWå¯ä»¥æ§åˆ¶viewç›¸æœºçš„æ—‹è½¬ä½ç½®ï¼Œä½†è¿™é‡Œå»æ‰ç›¸æœºçš„ä½ç§»
+            skyboxShader.setMat4("projection", projection);// å¤©ç©ºç›’ä¸ç”¨æ¨¡å‹çŸ©é˜µ ç¼©æ”¾ç›´æ¥é€šè¿‡ camera.ProcessMouseScroll æ§åˆ¶camera.Zoomæ¥è°ƒæ•´æŠ•å½±çŸ©é˜µçš„FOV
+            
+            glBindVertexArray(skyboxVAO);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+            glBindVertexArray(0);
+            
+            
+        }
+       
+        
+        
+        {
+            glDepthMask(GL_TRUE);
+            
+            shader.use();
+            glm::mat4 model = glm::mat4(1.0f);
+            glm::mat4 view = camera.GetViewMatrix();
+            glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+            shader.setMat4("model", model);
+            shader.setMat4("view", view);
+            shader.setMat4("projection", projection);
+            
+            // cubes
+            glBindVertexArray(cubeVAO);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, cubeTexture);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+            glBindVertexArray(0);
+        }
 
-		// glDepthMask(GL_FALSE); ÎÄµµÓÃµÄÊÇ ¹Ø±ÕÉî¶ÈĞ´Èë ¶øÇÒÊÇµÚÒ»¸ö»­µÄ
-		// µ«ºÜ¶àÒıÇæ¶¼·ÅÔÚopaque¶ÓÁĞºó äÖÈ¾ 
+        
+#else  // åæ¸²æŸ“å¤©ç©ºç›’
+        
+        {
+            // draw scene as normal
+            shader.use();
+            glm::mat4 model = glm::mat4(1.0f);
+            glm::mat4 view = camera.GetViewMatrix();
+            glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+            shader.setMat4("model", model);
+            shader.setMat4("view", view);
+            shader.setMat4("projection", projection);
+            
+            // cubes
+            glBindVertexArray(cubeVAO);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, cubeTexture);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+            glBindVertexArray(0);
+        }
 
-        // draw skybox as last GL_LEQUAL ?? Éî¶ÈÒ»ÑùµÄ»°»¹ÊÇÓÃÌì¿ÕºĞ´úÌæ???
-        glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
-        skyboxShader.use();
+        {
+            
+            
+            // æ¨¡å‹å¤§å°åªæœ‰-1åˆ°1 æœ€è¿œæ‰æ˜¯1 
+            
+            // draw skybox as last GL_LEQUAL
+            // change depth function so depth test passes when values are equal to depth buffer's content
+            // å› ä¸ºshaderä¸­ gl_Postion=xyww  zé€è§†é™¤æ³•åæ¨ªç­‰äº1 å¦‚æœåªç”¨LESSçš„è¯ï¼Œæ·±åº¦æµ‹è¯•ä¼šä¸é€šè¿‡
+            // è¿™é‡Œæ·±åº¦å†™å…¥è¿˜æ˜¯æ‰“å¼€çš„ï¼Œä½†æ˜¯å¤©ç©ºç›’çš„æ·±åº¦æ°¸è¿œæ˜¯1ï¼Œæ‰€ä»¥ä¸ä¼šå½±å“å…¶ä»–ç‰©ä½“
+            // ç›¸å½“äºå¦‚æœè¦ç”»ä¸€ä¸ªç‰©ä½“æ°¸è¿œåœ¨å…¶ä»–ç‰©ä½“çš„æœ€åé¢ï¼Œåªè¦shaderä¸­ä½¿ç”¨xywwå³å¯(xyzwæ˜¯é€è§†é™¤æ³•åçš„)ï¼Œä¸ç”¨åšä¸€ä¸ª2000x2000x2000å¾ˆå¤§çš„ç›’å­
+            glDepthFunc(GL_LEQUAL);
+            //glDepthFunc(GL_EQUAL); // it's ok
+            
+            
+            skyboxShader.use();
 
-		// ×¢Òâ¹Û²ì¾ØÕó Ò²»áÓĞÎ»ÒÆ £¬ËùÒÔÒª°ÑviewÖĞÒÆ³ıµôÎ»ÒÆ£¬Ö»ĞèÒª3x3µÄ¾ØÕó
-        view = glm::mat4(glm::mat3(camera.GetViewMatrix())); // remove translation from the view matrix
-        skyboxShader.setMat4("view", view);
-        skyboxShader.setMat4("projection", projection);
-        // skybox cube
-        glBindVertexArray(skyboxVAO);
-        glActiveTexture(GL_TEXTURE0); // ÕâÀïÒª°ó¶¨µ½ÎÆÀíµ¥Ôª0 µÄÄ¿±êÊÇ GL_TEXTURE_CUBE_MAP 
-        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-        glBindVertexArray(0);
-        glDepthFunc(GL_LESS); // set depth function back to default
+            // æ³¨æ„è§‚å¯ŸçŸ©é˜µ ä¹Ÿä¼šæœ‰ä½ç§» ï¼Œæ‰€ä»¥è¦æŠŠviewä¸­ç§»é™¤æ‰ä½ç§»ï¼Œåªéœ€è¦3x3çš„çŸ©é˜µ
+            // remove translation from the view matrix
+            glm::mat4 view = glm::mat4(glm::mat3(camera.GetViewMatrix()));
+            glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+            skyboxShader.setMat4("view", view);
+            skyboxShader.setMat4("projection", projection); // skybox ä¸ºä»€ä¹ˆè¿˜è¦æŠ•å½±?? ç›´æ¥æŠŠ-1åˆ°1ä¼ è¿‡å»ä¸å°±å¥½äº†??
+            
+            // skybox cube
+            glBindVertexArray(skyboxVAO);
+            glActiveTexture(GL_TEXTURE0); // è¿™é‡Œè¦ç»‘å®šåˆ°çº¹ç†å•å…ƒ0 çš„ç›®æ ‡æ˜¯ GL_TEXTURE_CUBE_MAP
+            glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+            glBindVertexArray(0);
+            
+        }
+        
+        {
+            // æ¢å¤é»˜è®¤ç®¡çº¿çŠ¶æ€
+            glDepthFunc(GL_LESS); // set depth function back to default
+        }
+     
+#endif
+    
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -343,6 +413,10 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 // ----------------------------------------------------------------------
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
+    
+    // è¿™é‡Œå¤„ç†viewçš„æ”¾å¤§å’Œç¼©å°??? 
+    
+    
     camera.ProcessMouseScroll(static_cast<float>(yoffset));
 }
 
@@ -406,7 +480,7 @@ unsigned int loadCubemap(vector<std::string> faces)
         unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
         if (data)
         {
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,  // Ö¸¶¨ÄÇ¸öside Ö±½ÓÓÃ+i
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,  // æŒ‡å®šé‚£ä¸ªside ç›´æ¥ç”¨+i
 				0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
             stbi_image_free(data);
         }
@@ -427,13 +501,13 @@ unsigned int loadCubemap(vector<std::string> faces)
 
 	GL_TEXTURE_WRAP_R ???
 
-	Ëü½ö½öÊÇÎªÎÆÀíµÄR×ø±êÉèÖÃÁË»·ÈÆ·½Ê½£¬Ëü¶ÔÓ¦µÄÊÇÎÆÀíµÄµÚÈı¸öÎ¬¶È£¨ºÍÎ»ÖÃµÄzÒ»Ñù£©
+	å®ƒä»…ä»…æ˜¯ä¸ºçº¹ç†çš„Råæ ‡è®¾ç½®äº†ç¯ç»•æ–¹å¼ï¼Œå®ƒå¯¹åº”çš„æ˜¯çº¹ç†çš„ç¬¬ä¸‰ä¸ªç»´åº¦ï¼ˆå’Œä½ç½®çš„zä¸€æ ·ï¼‰
 
-	ÒòÎªÕıºÃ´¦ÓÚÁ½¸öÃæÖ®¼äµÄÎÆÀí×ø±ê¿ÉÄÜ²»ÄÜ»÷ÖĞÒ»¸öÃæ£¨ÓÉÓÚÒ»Ğ©Ó²¼şÏŞÖÆ£©£¬
+	å› ä¸ºæ­£å¥½å¤„äºä¸¤ä¸ªé¢ä¹‹é—´çš„çº¹ç†åæ ‡å¯èƒ½ä¸èƒ½å‡»ä¸­ä¸€ä¸ªé¢ï¼ˆç”±äºä¸€äº›ç¡¬ä»¶é™åˆ¶ï¼‰ï¼Œ
 
-	ËùÒÔÍ¨¹ıÊ¹ÓÃGL_CLAMP_TO_EDGE (½«»·ÈÆ·½Ê½ÉèÖÃÎªGL_CLAMP_TO_EDGE)£¬
+	æ‰€ä»¥é€šè¿‡ä½¿ç”¨GL_CLAMP_TO_EDGE (å°†ç¯ç»•æ–¹å¼è®¾ç½®ä¸ºGL_CLAMP_TO_EDGE)ï¼Œ
 
-	OpenGL½«ÔÚÎÒÃÇ¶ÔÁ½¸öÃæÖ®¼ä²ÉÑùµÄÊ±ºò£¬ÓÀÔ¶·µ»ØËüÃÇµÄ±ß½çÖµ
+	OpenGLå°†åœ¨æˆ‘ä»¬å¯¹ä¸¤ä¸ªé¢ä¹‹é—´é‡‡æ ·çš„æ—¶å€™ï¼Œæ°¸è¿œè¿”å›å®ƒä»¬çš„è¾¹ç•Œå€¼
 
 
 	*/
