@@ -250,8 +250,11 @@ int main()
             skyboxShader.use();
             glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
             glm::mat4 view = glm::mat4(glm::mat3(camera.GetViewMatrix()));
-            skyboxShader.setMat4("view", view); // ASDW可以控制view相机的旋转位置，但这里去掉相机的位移
-            skyboxShader.setMat4("projection", projection);// 天空盒不用模型矩阵 缩放直接通过 camera.ProcessMouseScroll 控制camera.Zoom来调整投影矩阵的FOV
+			// ASDW按键 可以控制view相机的旋转位置，但这里去掉相机的位移
+			// 可以认为天空盒的中心，跟摄像机位置重合
+            skyboxShader.setMat4("view", view); 
+			// 天空盒不用模型矩阵 缩放直接通过 camera.ProcessMouseScroll 控制camera.Zoom来调整投影矩阵的FOV
+            skyboxShader.setMat4("projection", projection);
             
             glBindVertexArray(skyboxVAO);
             glActiveTexture(GL_TEXTURE0);
@@ -306,6 +309,8 @@ int main()
 
         {
             
+			glFrontFace(GL_CCW);
+			glEnable(GL_CULL_FACE); // 天空盒不受影响 
             
             // 模型大小只有-1到1 最远才是1 
             
