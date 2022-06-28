@@ -287,18 +287,23 @@ private:
         // 1. diffuse maps
         vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
         textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+
+
         // 2. specular maps
         vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
         textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
         
         // 3. normal maps ??? 为什么这个type是 HEIGHT ??
-        //     wavefront object format (.obj) 导出的法线贴图与 Assimp 的"约定" 略有不同，因为 aiTextureType_NORMAL 不加载法线贴图，而是 aiTextureType_HEIGHT
+        //        wavefront object format (.obj) 导出的法线贴图与 Assimp 的"约定" 略有不同，
+		//        因为 aiTextureType_NORMAL 不加载法线贴图，而是 aiTextureType_HEIGHT
         std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
         //std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, "texture_normal");
         textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
         
         // 4. height maps ???? 这个是ambient ????
-        //    Assimp并不支持反射贴图，我们可以使用环境贴图的方式将反射贴图从aiTextureType_AMBIENT类型中来加载反射贴图的材质  所以mtl文件中 map_Ka helmet_showroom_refl.png
+        //        Assimp并不支持反射贴图，
+		//        我们可以使用环境贴图的方式将反射贴图从aiTextureType_AMBIENT类型中来加载反射贴图的材质  
+		//        所以mtl文件中ka 是 map_Ka helmet_showroom_refl.png  refl是反射贴图 不是环境贴图
         std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_refl"); //"texture_height");
         //std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_height");
         textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
