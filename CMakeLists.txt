@@ -129,6 +129,7 @@ set(4.advanced_opengl
     6.1.cubemaps_skybox
     6.2.cubemaps_environment_mapping
 	6.3.cubemaps_reflectmap
+    6.4.cubemaps_ReflectionProbe_DynamicEnvironmentMapping
     8.advanced_glsl_ubo
     9.1.geometry_shader_houses
     9.2.geometry_shader_exploding
