@@ -5,9 +5,9 @@ struct Light { // 方向光
     //vec3 position;
     vec3 direction;
 
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
+    //vec3 ambient;
+    //vec3 diffuse;
+    //vec3 specular;
 };
 
 
@@ -44,14 +44,14 @@ void main()
     vec3 diffuse = Kd * diff * texture(texture_diffuse1, TexCoords).rgb;
     
     // specular
-    //vec3 viewDir = normalize(viewPos - FragPos);
+    vec3 viewDir = normalize(cameraPos - FragPos);
     //vec3 reflectDir = reflect(-lightDir, norm);
     //float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
     //vec3 specular = Ks * spec * texture(texture_specular1, TexCoords).rgb;
         
 	// cubemap环境(高光??)反射 
-	vec3 inputDir = normalize(FragPos - cameraPos);
-	vec3 reflectDir = reflect(inputDir,  norm);
+	//vec3 inputDir = normalize(FragPos - cameraPos);
+	vec3 reflectDir = reflect(-viewDir,  norm);
 
 	vec3 specular =  texture(skybox, reflectDir).rgb * reflective;
 
@@ -60,5 +60,5 @@ void main()
     
   
     
-    FragColor = vec4(specular, 1.0);
+    FragColor = vec4(result, 1.0);
 }

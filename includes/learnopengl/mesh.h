@@ -73,6 +73,7 @@ public:
         unsigned int specularNr = 1;
         unsigned int normalNr   = 1;
         unsigned int heightNr   = 1;
+        unsigned int refectNr   = 1; // 反射贴图
         
         
         for(unsigned int i = 0; i < textures.size(); i++)
@@ -86,15 +87,19 @@ public:
             // shader中Sampler2D应该按照 texture_diffuse1 texture_normal1 等命名方式
             // material.texture_diffuse1  material.texture_diffuse2 (从1开始,但是纹理单元从0开始)
             //
+            // 注意跟 Model.processMesh 要保持一致
+            //
             if(name == "texture_diffuse")
                 number = std::to_string(diffuseNr++);
             else if(name == "texture_specular")
                 number = std::to_string(specularNr++); // transfer unsigned int to string
             else if(name == "texture_normal")
-                number = std::to_string(normalNr++); // transfer unsigned int to string
+                number = std::to_string(normalNr++); // 法线贴图, assimp不兼容obj的bumpMap 所以用 aiTextureType_HEIGHT 替换
              else if(name == "texture_height")
-                number = std::to_string(heightNr++); // transfer unsigned int to string
-
+                number = std::to_string(heightNr++); // ???? 这个assimp加载obj用什么?? obj没有高度贴图 ??
+            else if(name == "texture_refl")
+                number = std::to_string(refectNr++); // 反射贴图, assimp不支持， 所以用 aiTextureType_AMBIENT 替换
+            
             //
             // shader中的采样器 绑定到 纹理单元(??这样不是绑定到采样器,所以用纹理的参数来filter和wrapper???)
             // now set the sampler to the correct texture unit

@@ -184,6 +184,9 @@ int main()
 		modelShader.setMat4("view", view);
 		modelShader.setMat4("projection", projection);
 		modelShader.setVec3("cameraPos", camera.Position); // 传入相机的位置
+        
+        modelShader.setVec3("light.direction", 0.0f, 0.0f, -1.0f); // 天空盒的 阳光在后面，可能背光
+        // modelShader.setVec3("light.direction", 0.0f, 0.0f, 1.0f);     // 为了好看点 这里加了一簇光在前面，跟天空盒的太阳不太一样
 
 		// 模型中部分mesh只有3个纹理 
 		// 模型加载器本身就已经在着色器中占用了4个纹理单元了，需要将天空盒绑定到第4个纹理单元上
