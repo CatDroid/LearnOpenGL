@@ -162,7 +162,7 @@ int main()
     // -------------------------
     p_modelShader = new Shader{"6.4.model_loading.vs", "6.4.model_loading.fs"};
     p_skyboxShader= new Shader("6.4.skybox.vs", "6.4.skybox.fs");
-    p_cubeShader  = new Shader("6.4.cubemaps.vs", "6.4.cubemaps.ps");
+    p_cubeShader  = new Shader("6.4.cubemaps.vs", "6.4.cubemaps.fs");
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     float skyboxVertices[] = {
@@ -320,7 +320,9 @@ int main()
         glm::mat4 view = camera.GetViewMatrix();
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 
-        drawScene(view, projection, camera.Position, newCubemapTexture);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0); // 注意! 必须设置viewport和绑定fbo=0
+		glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+        drawScene(view,  projection,  camera.Position, newCubemapTexture);
         
 
 

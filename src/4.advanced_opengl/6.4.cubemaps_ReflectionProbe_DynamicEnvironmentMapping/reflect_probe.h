@@ -67,9 +67,17 @@ public:
         // GL_TEXTURE_2D 普通2D纹理
         // GL_TEXTURE_2D_MULTISAMPLE 2D多重采样纹理
         // GL_TEXTURE_CUBE_MAP_POSITIVE_X cubemap的某个面的纹理 （注意: !!! 纹理ID是同一个!!!)
-        glFramebufferTexture2D(probeCubeFboId, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X, probeCubeTexId, 0); // 暂时先绑定到cubemap的x面
-        glFramebufferTexture2D(probeCubeFboId, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, probeCubeRboId , 0);
-        
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X, probeCubeTexId, 0); // 暂时先绑定到cubemap的x面
+        //glFramebufferTexture2D(probeCubeFboId, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, probeCubeRboId , 0);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, probeCubeRboId);
+		// 注意!! 附件是rbo, 绑定不是 glFramebufferTexture2D  !!
+		// glFramebufferRenderbuffer renderTarget 必须是 GL_RENDERBUFFER. 
+		GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+		if (status != GL_FRAMEBUFFER_COMPLETE)
+		{
+			cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete! " << status << endl;
+		}
+
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         
         // 没有模型 不用建VBO VAO等
@@ -85,25 +93,34 @@ public:
         // 焦距是zNear 固定是0.1f
         // fov一般是 通过垂直fov+radio来实现, 加上zNear, 这三者可以限制了水平fov (相当于这4个因素，有3个自由度)
         
+	 
+		glViewport(0, 0, fboSize, fboSize);
+
         float radio = fboSize / fboSize ; // == 1.0
         float fov   = 360.0 / 4.0;    // 90.0度∫
         glm::mat4 projection = glm::perspective(glm::radians(fov), radio, 0.1f, 100.0f);
         
-        
-        static float s_Yaws[]   = {90,270,  0,0,   0,180};
-        static float s_Pitchs[] = {0,0,  90,-90,   0,0};
+		static float s_Side[] = { GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
+											 GL_TEXTURE_CUBE_MAP_NEGATIVE_Z,
+											 GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+											 GL_TEXTURE_CUBE_MAP_NEGATIVE_X ,
+											 GL_TEXTURE_CUBE_MAP_POSITIVE_Y,
+											 GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+											  };
+        static float s_Yaws[]   = {90, -90,   0,     180,     90,  -90}; // 航向角(水平角)
+        static float s_Pitchs[] =  {  0,     0,  0,  0,   -90,  90}; // 俯仰角
         
         for (int i = 0 ; i < 6 ; i++)
         {
             glBindFramebuffer(GL_FRAMEBUFFER, probeCubeFboId);
-            glFramebufferTexture2D(probeCubeFboId, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X+i, probeCubeTexId ,0);
-            glClearColor(0, 0, 0, 0);
+            glFramebufferTexture2D(probeCubeFboId, GL_COLOR_ATTACHMENT0, s_Side[i], probeCubeTexId ,0);
+			glClearColor(0, 0, 0, 0);
             glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT); // 不用加载 原来颜色附件数据从fbo到tile buffer
             
   
             probeCamera.Yaw   = s_Yaws[i] ;
             probeCamera.Pitch = s_Pitchs[i];
-            probeCamera.ProcessMouseMovement(0,0,false);
+            probeCamera.ProcessMouseMovement(0, 0, false);
             
             // 渲染当前probe位置物体 以外的物体
             auto view = probeCamera.GetViewMatrix();
@@ -144,6 +161,8 @@ public:
             
             
         }
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
        
     }
     
