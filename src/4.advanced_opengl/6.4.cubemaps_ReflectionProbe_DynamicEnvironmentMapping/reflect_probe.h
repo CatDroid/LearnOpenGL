@@ -28,7 +28,7 @@ class ReflectProbe
 {
 private:
     GLuint probeCubeTexId = 0;
-    GLuint probeCubeFboId = 0;
+	GLuint probeCubeFboIds[6] = { 0 };
     GLuint probeCubeRboId = 0;
     int fboSize = 0;
     
@@ -61,23 +61,29 @@ public:
         glBindRenderbuffer(GL_RENDERBUFFER, 0);
         
         //  只生成一个 每次切换 color附件
-        glGenFramebuffers(1, &probeCubeFboId);
-        glBindFramebuffer(GL_FRAMEBUFFER, probeCubeFboId);
-       
-        // GL_TEXTURE_2D 普通2D纹理
-        // GL_TEXTURE_2D_MULTISAMPLE 2D多重采样纹理
-        // GL_TEXTURE_CUBE_MAP_POSITIVE_X cubemap的某个面的纹理 （注意: !!! 纹理ID是同一个!!!)
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X, probeCubeTexId, 0); // 暂时先绑定到cubemap的x面
-        //glFramebufferTexture2D(probeCubeFboId, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, probeCubeRboId , 0);
-		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, probeCubeRboId);
-		// 注意!! 附件是rbo, 绑定不是 glFramebufferTexture2D  !!
-		// glFramebufferRenderbuffer renderTarget 必须是 GL_RENDERBUFFER. 
-		GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-		if (status != GL_FRAMEBUFFER_COMPLETE)
-		{
-			cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete! " << status << endl;
-		}
+        glGenFramebuffers(6, probeCubeFboIds);
 
+		int side = 0;
+		for (auto& probeCubeFboId : probeCubeFboIds)
+		{
+			glBindFramebuffer(GL_FRAMEBUFFER, probeCubeFboId);
+
+			// GL_TEXTURE_2D 普通2D纹理
+			// GL_TEXTURE_2D_MULTISAMPLE 2D多重采样纹理
+			// GL_TEXTURE_CUBE_MAP_POSITIVE_X cubemap的某个面的纹理 （注意: !!! 纹理ID是同一个!!!)
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + (side++), probeCubeTexId, 0); // 暂时先绑定到cubemap的x面
+																															 //glFramebufferTexture2D(probeCubeFboId, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, probeCubeRboId , 0);
+			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, probeCubeRboId);
+			// 注意!! 附件是rbo, 绑定不是 glFramebufferTexture2D  !!
+			// glFramebufferRenderbuffer renderTarget 必须是 GL_RENDERBUFFER. 
+			GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+			if (status != GL_FRAMEBUFFER_COMPLETE)
+			{
+				cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete! " << status << endl;
+			}
+
+		}
+      
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         
         // 没有模型 不用建VBO VAO等
@@ -100,37 +106,47 @@ public:
         float fov   = 360.0 / 4.0;    // 90.0度∫
         glm::mat4 projection = glm::perspective(glm::radians(fov), radio, 0.1f, 100.0f);
         
-		static float s_Side[] = { GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
-											 GL_TEXTURE_CUBE_MAP_NEGATIVE_Z,
-											 GL_TEXTURE_CUBE_MAP_POSITIVE_X,
-											 GL_TEXTURE_CUBE_MAP_NEGATIVE_X ,
-											 GL_TEXTURE_CUBE_MAP_POSITIVE_Y,
-											 GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
-											  };
-        static float s_Yaws[]   = {90, -90,   0,     180,     90,  -90}; // 航向角(水平角)
-        static float s_Pitchs[] =  {  0,     0,  0,  0,   -90,  90}; // 俯仰角
+		static float s_Side[] = { 
+			GL_TEXTURE_CUBE_MAP_POSITIVE_X, // 右边 
+			GL_TEXTURE_CUBE_MAP_NEGATIVE_X ,						
+			GL_TEXTURE_CUBE_MAP_POSITIVE_Y, // cubemap z+轴 往上看 
+			GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+			GL_TEXTURE_CUBE_MAP_POSITIVE_Z, // 前面  cubemap z+轴    
+			GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 
+		};
+        //static float s_Yaws[]   = {90, -90,   0,     180,     90,  -90}; // 航向角(水平角)
+        //static float s_Pitchs[] =  {  0,     0,  0,  0,   -90,  90};     // 俯仰角
         
+		// 按照世界坐标系(右手) 跟cubemap左手不同
+		static glm::vec3 s_Fronts[] = { glm::vec3{1.0,0.0,0.0}, glm::vec3{-1.0,0.0,0.0}, glm::vec3{0.0, 1.0, 0.0}, glm::vec3{0.0,-1.0, 0.0}, glm::vec3{0.0,0.0,-1.0}, glm::vec3{0.0,0.0,1.0}};
+		static glm::vec3 s_Ups[]    = { glm::vec3{0.0,1.0,0.0}, glm::vec3{ 0.0,1.0,0.0}, glm::vec3{0.0, 0.0, 1.0}, glm::vec3{0.0, 0.0, -1.0}, glm::vec3{0.0,1.0,0.0}, glm::vec3{0.0,1.0, 0.0} };
+		//static glm::vec3 Rights   = { glm::vec3{}, glm::vec3{}, glm::vec3{}, glm::vec3{}, glm::vec3{}, glm::vec3{}  };
+
+
         for (int i = 0 ; i < 6 ; i++)
         {
-            glBindFramebuffer(GL_FRAMEBUFFER, probeCubeFboId);
-            glFramebufferTexture2D(probeCubeFboId, GL_COLOR_ATTACHMENT0, s_Side[i], probeCubeTexId ,0);
+            glBindFramebuffer(GL_FRAMEBUFFER, probeCubeFboIds[i]);
+			// windows上不能这样换的?  但是RenderDoc抓帧是正常的 
+            //glFramebufferTexture2D(probeCubeFboId, GL_COLOR_ATTACHMENT0, s_Side[i], probeCubeTexId ,0); 
 			glClearColor(0, 0, 0, 0);
             glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT); // 不用加载 原来颜色附件数据从fbo到tile buffer
-            
-  
-            probeCamera.Yaw   = s_Yaws[i] ;
-            probeCamera.Pitch = s_Pitchs[i];
-            probeCamera.ProcessMouseMovement(0, 0, false);
+            	
+			probeCamera.Front = s_Fronts[i];
+			probeCamera.Up    = s_Ups[i];
+
+            //probeCamera.Yaw   = s_Yaws[i] ;
+            //probeCamera.Pitch = s_Pitchs[i];
+            // probeCamera.ProcessMouseMovement(0, 0, false);
             
             // 渲染当前probe位置物体 以外的物体
             auto view = probeCamera.GetViewMatrix();
             _drawScene(view, projection, probeCamera.Position, 0);
             
-            if (glInvalidateFramebuffer != nullptr)
-            {
-                static GLenum discardFbo[] = {GL_DEPTH_STENCIL_ATTACHMENT};
-                glInvalidateFramebuffer(GL_FRAMEBUFFER, 1, discardFbo); // 深度末班附件不用写入
-            }
+            //if (glInvalidateFramebuffer != nullptr)
+            //{
+            //    static GLenum discardFbo[] = {GL_DEPTH_STENCIL_ATTACHMENT};
+            //    glInvalidateFramebuffer(GL_FRAMEBUFFER, 1, discardFbo); // 深度末班附件不用写入
+            //}
          
             
             /*

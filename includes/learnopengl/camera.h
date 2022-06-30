@@ -30,9 +30,9 @@ public:
     // camera Attributes
     glm::vec3 Position;
     glm::vec3 Front;
-    glm::vec3 Up;
+    glm::vec3 Up;      // 这个会根据Front来调整 
     glm::vec3 Right;
-    glm::vec3 WorldUp;
+    glm::vec3 WorldUp; // 这个基本是固定的 不会调整
     // euler Angles
     float Yaw;
     float Pitch;

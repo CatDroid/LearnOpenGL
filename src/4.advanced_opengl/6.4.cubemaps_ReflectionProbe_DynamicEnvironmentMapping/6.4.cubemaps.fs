@@ -28,6 +28,6 @@ void main()
 		float   Refractive_Index = 1.00 / 1.33;
 		vec3 R = refract(I, normalize(Normal), Refractive_Index);
 	#endif 
- 
+	R.z = -R.z ;
     FragColor = vec4(texture(skybox, R).rgb, 1.0);
 }

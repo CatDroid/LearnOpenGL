@@ -53,6 +53,8 @@ void main()
 	//vec3 inputDir = normalize(FragPos - cameraPos);
 	vec3 reflectDir = reflect(-viewDir,  norm);
 
+	reflectDir.z = - reflectDir.z ;
+
 	vec3 specular =  texture(skybox, reflectDir).rgb * reflective;
 
         
