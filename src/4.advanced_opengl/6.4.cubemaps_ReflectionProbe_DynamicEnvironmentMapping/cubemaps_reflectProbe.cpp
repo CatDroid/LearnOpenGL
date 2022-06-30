@@ -93,7 +93,7 @@ void drawScene(glm::mat4 & view , glm::mat4 & projection, glm::vec3& cameraPos, 
         // cubes
         glBindVertexArray(cubeVAO);
         glActiveTexture(GL_TEXTURE0);
-        //glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+		//glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, reflectProbe);// 使用动态环境映射纹理 (这里纹理不包含二次反射，自己不会再别人的反射上)
         glDrawArrays(GL_TRIANGLES, 0, 36);
         glBindVertexArray(0);

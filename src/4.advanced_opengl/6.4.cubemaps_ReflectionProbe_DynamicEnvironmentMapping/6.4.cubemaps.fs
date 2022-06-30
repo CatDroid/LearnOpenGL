@@ -29,5 +29,6 @@ void main()
 		vec3 R = refract(I, normalize(Normal), Refractive_Index);
 	#endif 
 	R.z = -R.z ;
+	R.y = -R.y ; // 渲染到cubemap的纹理要上下镜像, cubemap的uv原点是左上角(??渲染的时候 认为原点是图像的左下角??)
     FragColor = vec4(texture(skybox, R).rgb, 1.0);
 }
