@@ -10,7 +10,7 @@ uniform mat4 view;
 
 void main()
 {
-    TexCoords = aPos;
+    TexCoords = vec3(aPos.x, aPos.y, -aPos.z);
     vec4 pos = projection * view * vec4(aPos, 1.0);
     
     //if (pos.w > 0)

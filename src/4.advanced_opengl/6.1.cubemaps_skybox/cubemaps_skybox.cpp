@@ -201,16 +201,34 @@ int main()
 
     vector<std::string> faces
     {
-        FileSystem::getPath("resources/textures/skybox/right.jpg"),
-        FileSystem::getPath("resources/textures/skybox/left.jpg"),
-        FileSystem::getPath("resources/textures/skybox/top.jpg"),
-        FileSystem::getPath("resources/textures/skybox/bottom.jpg"),
-        FileSystem::getPath("resources/textures/skybox/front.jpg"), // POSITIVE_Z 实际这个在后面
-        FileSystem::getPath("resources/textures/skybox/back.jpg")
+        FileSystem::getPath("resources/textures/skybox_wiki/right.jpg"),
+        FileSystem::getPath("resources/textures/skybox_wiki/left.jpg"),
+        FileSystem::getPath("resources/textures/skybox_wiki/top.jpg"),
+        FileSystem::getPath("resources/textures/skybox_wiki/bottom.jpg"),
+        FileSystem::getPath("resources/textures/skybox_wiki/front.jpg"),   // Z+ 
+        FileSystem::getPath("resources/textures/skybox_wiki/back.jpg")
     };
-	// 注意GL_TEXTURE_CUBE_MAP_POSITIVE_Z	的是back 
-	// 跟文档 这里的front和back反了 
+	// skybox_wiki 下的贴图是跟文档中的十字cubemap是一样的方向 
+	// 但由于天空盒是左手坐标系，shader中反射用的是右手坐标系
+	// 需要在shader中采样前 对坐标z取反
 
+	/* 
+		https://www.khronos.org/opengl/wiki/Cubemap_Texture
+		8.13 Cube Map Texture Selection
+		https://www.khronos.org/registry/OpenGL/specs/gl/glspec46.core.pdf
+
+		根据文档有两点
+		1. Cubemap是左手坐标系 
+		2. Cubemap采样 相当于站在cubemap中面向各面 UV坐标原点在左上角 
+		   对于y方向，就是面对cubemap左手坐标系中的z正轴,然后抬头和低头看z轴
+
+		因此产生了cubemap的Z+面和Z-面的UV原点刚好水平镜像了。(由于UV的上述定义方式)
+
+		如果直接用顶点坐标（右手坐标系）作为方向向量采样，cubemap的z方向就会采样了另外一面。（左右手)
+		比如世界坐标系下的方向 {x0, y0 ,z0}，就会去采样cubemap坐标系下{x0,y0,-z0}, 由于另外一面uv原点是水平镜像的，所以采样后显示就会水平镜像了。
+		同样, 由于z轴反了，x轴方向的采样也会左右镜像；但y周方向是上下镜像的
+
+	*/
     unsigned int cubemapTexture = loadCubemap(faces);
 
     // shader configuration

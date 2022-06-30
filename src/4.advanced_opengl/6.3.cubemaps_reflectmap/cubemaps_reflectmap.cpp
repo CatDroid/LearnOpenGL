@@ -142,12 +142,12 @@ int main()
     // -------------
     vector<std::string> faces
     {
-        FileSystem::getPath("resources/textures/skybox/right.jpg"),
-        FileSystem::getPath("resources/textures/skybox/left.jpg"),
-        FileSystem::getPath("resources/textures/skybox/top.jpg"),
-        FileSystem::getPath("resources/textures/skybox/bottom.jpg"),
-        FileSystem::getPath("resources/textures/skybox/front.jpg"),
-        FileSystem::getPath("resources/textures/skybox/back.jpg"),
+        FileSystem::getPath("resources/textures/skybox_wiki/right.jpg"),
+        FileSystem::getPath("resources/textures/skybox_wiki/left.jpg"),
+        FileSystem::getPath("resources/textures/skybox_wiki/top.jpg"),
+        FileSystem::getPath("resources/textures/skybox_wiki/bottom.jpg"),
+        FileSystem::getPath("resources/textures/skybox_wiki/front.jpg"),
+        FileSystem::getPath("resources/textures/skybox_wiki/back.jpg"),
     };
     unsigned int cubemapTexture = loadCubemap(faces);
 

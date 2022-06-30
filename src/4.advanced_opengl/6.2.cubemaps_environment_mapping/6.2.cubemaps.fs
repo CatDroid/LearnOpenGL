@@ -12,7 +12,7 @@ void main()
 {    
     vec3 I = normalize(Position - cameraPos); // 入射角方向 是指向顶点,跟物理书的一样
 	
-	#if 0 
+	#if 1 
 		vec3 R = reflect(I, normalize(Normal));
 	#else 
 		/*
@@ -28,6 +28,8 @@ void main()
 		float   Refractive_Index = 1.00 / 1.33;
 		vec3 R = refract(I, normalize(Normal), Refractive_Index);
 	#endif 
- 
+	
+	R.z = -R.z ;
+
     FragColor = vec4(texture(skybox, R).rgb, 1.0);
 }
