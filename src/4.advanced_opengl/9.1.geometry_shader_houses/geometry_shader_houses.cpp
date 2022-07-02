@@ -50,7 +50,8 @@ int main()
 
     // build and compile shaders
     // -------------------------
-    Shader shader("9.1.geometry_shader.vs", "9.1.geometry_shader.fs", "9.1.geometry_shader.gs");
+    //Shader shader("9.1.geometry_shader.vs", "9.1.geometry_shader.fs"); // , "9.1.geometry_shader.gs"
+	Shader shader("9.1.geometry_shader.vs", "9.1.geometry_shader.fs", "9.1.geometry_shader.gs");  
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
@@ -72,6 +73,13 @@ int main()
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(2 * sizeof(float)));
     glBindVertexArray(0);
 
+	// 在顶点着色器中修改点大小的功能默认是禁用的，
+	// 如果你需要启用它的话，你需要启用OpenGL的GL_PROGRAM_POINT_SIZE：
+	//glEnable(GL_PROGRAM_POINT_SIZE);
+
+	// 或者不在shader中执行, 而在cpu端修改管线状态
+	// glPointSize(50);
+
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window))
@@ -84,6 +92,8 @@ int main()
         // draw points
         shader.use();
         glBindVertexArray(VAO);
+
+
         glDrawArrays(GL_POINTS, 0, 4);
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)

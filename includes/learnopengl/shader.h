@@ -59,36 +59,59 @@ public:
         }
         const char* vShaderCode = vertexCode.c_str();
         const char * fShaderCode = fragmentCode.c_str();
+
+
         // 2. compile shaders
         unsigned int vertex, fragment;
+
+
         // vertex shader
         vertex = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(vertex, 1, &vShaderCode, NULL);
         glCompileShader(vertex);
         checkCompileErrors(vertex, "VERTEX");
+
+
         // fragment Shader
         fragment = glCreateShader(GL_FRAGMENT_SHADER);
         glShaderSource(fragment, 1, &fShaderCode, NULL);
         glCompileShader(fragment);
         checkCompileErrors(fragment, "FRAGMENT");
+
+
         // if geometry shader is given, compile geometry shader
         unsigned int geometry;
         if(geometryPath != nullptr)
         {
+			/*
+			几何着色器的输入是一个图元（如点或三角形）的一组顶点。
+
+			1. 几何着色器可以在顶点发送到下一着色器阶段之前对它们随意变换。
+			2. 几何着色器最有趣的地方在于，它能够将（这一组）顶点变换为完全不同的图元，
+			3. 并且还能生成比原来更多的顶点
+			
+			*/
+
             const char * gShaderCode = geometryCode.c_str();
             geometry = glCreateShader(GL_GEOMETRY_SHADER);
             glShaderSource(geometry, 1, &gShaderCode, NULL);
             glCompileShader(geometry);
             checkCompileErrors(geometry, "GEOMETRY");
         }
+
+
         // shader Program
         ID = glCreateProgram();
         glAttachShader(ID, vertex);
         glAttachShader(ID, fragment);
         if(geometryPath != nullptr)
-            glAttachShader(ID, geometry);
-        glLinkProgram(ID);
+            glAttachShader(ID, geometry); // 几何着色器shader也可以附着上program 
+
+
+        glLinkProgram(ID); // 最后program连接上所有附着的shader
         checkCompileErrors(ID, "PROGRAM");
+
+
         // delete the shaders as they're linked into our program now and no longer necessery
         glDeleteShader(vertex);
         glDeleteShader(fragment);

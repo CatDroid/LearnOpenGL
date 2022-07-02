@@ -1,5 +1,5 @@
 #version 330 core
-layout (points) in;
+layout (points) in; // 如果跟glDraw*不一样的话 linkprogram没有问题 但使用没有效果
 layout (triangle_strip, max_vertices = 5) out;
 
 in VS_OUT {
