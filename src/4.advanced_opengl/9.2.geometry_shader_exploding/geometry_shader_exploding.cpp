@@ -82,8 +82,8 @@ int main()
     // -----------
     Model nanosuit(FileSystem::getPath("resources/objects/nanosuit/nanosuit.obj")); 
 
-	//glEnable(GL_CULL_FACE); // Ä¬ÈÏÃ»ÓĞ´ò¿ªÃæÌŞ³ı
-	//glFrontFace(GL_CCW); // ÕâÑù¿ÉÒÔ¿´µ½µ¥¶ÀÒ»ÃæµÄĞ§¹û
+	//glEnable(GL_CULL_FACE); // é»˜è®¤æ²¡æœ‰æ‰“å¼€é¢å‰”é™¤
+	//glFrontFace(GL_CCW); // è¿™æ ·å¯ä»¥çœ‹åˆ°å•ç‹¬ä¸€é¢çš„æ•ˆæœ
 
     // render loop
     // -----------
@@ -113,7 +113,7 @@ int main()
         shader.setMat4("view", view);
         shader.setMat4("model", model);
 
-		// glfwGetTime ÊÇGLFW³õÊ¼»¯ºóÁ÷ÊÅµÄÊ±¼ä ,µ¥Î»Ãë
+		// glfwGetTime æ˜¯GLFWåˆå§‹åŒ–åæµé€çš„æ—¶é—´ ,å•ä½ç§’
 		// 
         // add time component to geometry shader in the form of a uniform
         shader.setFloat("time", static_cast<float>(glfwGetTime())); 

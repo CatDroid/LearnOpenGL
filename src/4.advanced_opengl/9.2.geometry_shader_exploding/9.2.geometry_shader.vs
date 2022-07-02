@@ -17,7 +17,7 @@ void main()
     vs_out.texCoords = aTexCoords;
     gl_Position = projection * view * model * vec4(aPos, 1.0); 
 
-	//directVsToFs = aTexCoords;// ²âÊÔÖ±½Óvsµ½ps
-	// Á´½Ó´íÎó: The fragment shader uses varying directVsToFs, but previous shader does not write to it.
-	// ²»ÄÜÌø¹ıgs ´ÓvsÖ±½Ó¸öps´«µİÊı¾İ
+	//directVsToFs = aTexCoords;// æµ‹è¯•ç›´æ¥vsåˆ°ps
+	// é“¾æ¥é”™è¯¯: The fragment shader uses varying directVsToFs, but previous shader does not write to it.
+	// ä¸èƒ½è·³è¿‡gs ä»vsç›´æ¥ä¸ªpsä¼ é€’æ•°æ®
 }

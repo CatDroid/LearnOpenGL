@@ -1,6 +1,9 @@
 #version 330 core
 layout (triangles) in;
-layout (line_strip, max_vertices = 6) out; // Êä³öÒ»¹²6¸ö¶¥µã ¹²3¸öÍ¼Ôª, Ã¿¸öÍ¼ÔªÓĞÁ½¸ö¶¥µã£¬×é³ÉÒ»¸öLine
+layout (line_strip, max_vertices = 6) out; // è¾“å‡ºä¸€å…±6ä¸ªé¡¶ç‚¹ å…±3ä¸ªå›¾å…ƒ, æ¯ä¸ªå›¾å…ƒæœ‰ä¸¤ä¸ªé¡¶ç‚¹ï¼Œç»„æˆä¸€ä¸ªLine
+
+// OpenGL 3.2 Core profile æ”¯æŒ ç‚¹ã€çº¿å¸¦å’Œä¸‰è§’å½¢å¸¦ points line_strip triangle_strip
+//                         ä½†ä¸æ”¯æŒå°†ä¸‰è§’å½¢(triangles)ä½œä¸ºè¾“å‡º 
 
 in VS_OUT 
 {
@@ -18,9 +21,11 @@ uniform mat4 projection;
 
 void GenerateLine(int index)
 {
-	// gl_in[]. gl_PositionÊÇvsµÄÊä³ö,  vsÏÖÔÚÊä³öµÄÊÇview spaceµÄ¶¥µã×ø±êºÍ·¨ÏßÏòÁ¿
+	// gl_in[]. gl_Positionæ˜¯vsçš„è¾“å‡º,  vsç°åœ¨è¾“å‡ºçš„æ˜¯view spaceçš„é¡¶ç‚¹åæ ‡å’Œæ³•çº¿å‘é‡
+    // 
+    // å¹¶ä¸” åé¢æœ‰å‡ ä½•ç€è‰²å™¨çš„é¡¶ç‚¹ç€è‰²å™¨ç”šè‡³ä¸éœ€è¦å†™å…¥ gl_Position
 
-	// ÔÚviewspace×ö·¨ÏßÍ¹³ö
+	// åœ¨viewspaceåšæ³•çº¿å‡¸å‡º
 
     gl_Position = projection * gl_in[index].gl_Position;
 	gs_out.fColor = vec3(1.0, 1.0, 0.0);
@@ -28,7 +33,7 @@ void GenerateLine(int index)
 
     gl_Position = projection * (gl_in[index].gl_Position + vec4(gs_in[index].normal, 0.0) * MAGNITUDE);
 	gs_out.fColor = vec3(1.0, 0.0, 0.0); 
-    EmitVertex(); // ·¢Éä¶¥µãÒ²ÊÇÉèÖÃ gl_Position Õâ¸övsµÄÊä³ö (¼¸ºÎ×ÅÉ«Æ÷Ïàµ±ÓÚ¶à¸ö¶¥µã×ÅÉ«Æ÷)
+    EmitVertex(); // å‘å°„é¡¶ç‚¹ä¹Ÿæ˜¯è®¾ç½® gl_Position è¿™ä¸ªvsçš„è¾“å‡º (å‡ ä½•ç€è‰²å™¨ç›¸å½“äºå¤šä¸ªé¡¶ç‚¹ç€è‰²å™¨)
 
     EndPrimitive();
 }

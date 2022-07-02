@@ -14,20 +14,20 @@ uniform float time;
 vec4 explode(vec4 position, vec3 normal)
 {
     float magnitude = 2.0;
-    vec3 direction = normal * ((sin(time) + 1.0) / 2.0) * magnitude; // ·ù¶ÈÊÇ 0~magnitudeµÄÕıÏÒ²¨
-    return position + vec4(direction, 0.0); // ÑØ×Å·¨Ïß ÒÆ¶¯ 0~magnitude
+    vec3 direction = normal * ((sin(time) + 1.0) / 2.0) * magnitude; // å¹…åº¦æ˜¯ 0~magnitudeçš„æ­£å¼¦æ³¢
+    return position + vec4(direction, 0.0); // æ²¿ç€æ³•çº¿ ç§»åŠ¨ 0~magnitude
 }
 
 vec3 GetNormal()
 {
     vec3 a = vec3(gl_in[0].gl_Position) - vec3(gl_in[1].gl_Position);
     vec3 b = vec3(gl_in[2].gl_Position) - vec3(gl_in[1].gl_Position);
-    return normalize(cross( a, b)); // ÕâÀïµÄË³ĞòºÜÖØÒª
+    return normalize(cross( a, b)); // è¿™é‡Œçš„é¡ºåºå¾ˆé‡è¦  æ³¨æ„è¿™ä¸ªæ˜¯clipSpaceçš„gl_Position !
 }
 
 void main() 
 {    
-    vec3 normal = GetNormal(); // ²»´«Èë·¨Ïß, ¶øÊÇÖ±½ÓÓÃÈı½ÇĞÎ, Ãæ·¨Ïß 
+    vec3 normal = GetNormal(); // ä¸ä¼ å…¥æ³•çº¿, è€Œæ˜¯ç›´æ¥ç”¨ä¸‰è§’å½¢, é¢æ³•çº¿ 
 
     gl_Position = explode(gl_in[0].gl_Position, normal);
     TexCoords = gs_in[0].texCoords;
@@ -38,7 +38,7 @@ void main()
     EmitVertex();
 
     gl_Position = explode(gl_in[2].gl_Position, normal);
-    TexCoords = gs_in[2].texCoords; // !! ×¢ÒâÎÒÃÇÔÚ·¢Éä¶¥µãÖ®Ç°Êä³öÁË¶ÔÓ¦µÄÎÆÀí×ø±ê
+    TexCoords = gs_in[2].texCoords; // !! æ³¨æ„æˆ‘ä»¬åœ¨å‘å°„é¡¶ç‚¹ä¹‹å‰è¾“å‡ºäº†å¯¹åº”çš„çº¹ç†åæ ‡
     EmitVertex();
 
     EndPrimitive();

@@ -5,7 +5,7 @@ in vec2 TexCoords;
 
 //in vec2 directVsToFs ; 
 // The fragment shader uses varying directVsToFs, but previous shader does not write to it.
-// ²»ÄÜÌø¹ıgs ´ÓvsÖ±½Ó¸öps´«µİÊı¾İ
+// ä¸èƒ½è·³è¿‡gs ä»vsç›´æ¥ä¸ªpsä¼ é€’æ•°æ®
 
 uniform sampler2D texture_diffuse1;
 
