@@ -6,6 +6,8 @@ out VS_OUT {
     vec2 texCoords;
 } vs_out;
 
+//out vec2 directVsToFs ; 
+
 uniform mat4 projection;
 uniform mat4 view;
 uniform mat4 model;
@@ -14,4 +16,8 @@ void main()
 {
     vs_out.texCoords = aTexCoords;
     gl_Position = projection * view * model * vec4(aPos, 1.0); 
+
+	//directVsToFs = aTexCoords;// 测试直接vs到ps
+	// 链接错误: The fragment shader uses varying directVsToFs, but previous shader does not write to it.
+	// 不能跳过gs 从vs直接个ps传递数据
 }

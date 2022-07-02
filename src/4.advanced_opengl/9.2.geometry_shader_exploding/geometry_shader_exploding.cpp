@@ -82,6 +82,9 @@ int main()
     // -----------
     Model nanosuit(FileSystem::getPath("resources/objects/nanosuit/nanosuit.obj")); 
 
+	//glEnable(GL_CULL_FACE); // 默认没有打开面剔除
+	//glFrontFace(GL_CCW); // 这样可以看到单独一面的效果
+
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window))
@@ -110,8 +113,10 @@ int main()
         shader.setMat4("view", view);
         shader.setMat4("model", model);
 
+		// glfwGetTime 是GLFW初始化后流逝的时间 ,单位秒
+		// 
         // add time component to geometry shader in the form of a uniform
-        shader.setFloat("time", static_cast<float>(glfwGetTime()));
+        shader.setFloat("time", static_cast<float>(glfwGetTime())); 
 
         // draw model
         nanosuit.Draw(shader);
