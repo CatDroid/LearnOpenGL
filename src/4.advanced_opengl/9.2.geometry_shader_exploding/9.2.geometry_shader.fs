@@ -2,6 +2,7 @@
 out vec4 FragColor;
 
 in vec2 TexCoords;
+in vec3 fColor;
 
 //in vec2 directVsToFs ; 
 // The fragment shader uses varying directVsToFs, but previous shader does not write to it.
@@ -11,7 +12,7 @@ uniform sampler2D texture_diffuse1;
 
 void main()
 {
-    FragColor = texture(texture_diffuse1, TexCoords);
+    FragColor = texture(texture_diffuse1, TexCoords) * vec4(fColor, 1.0);
 	 //FragColor = texture(texture_diffuse1, directVsToFs);
 }
 

@@ -139,13 +139,14 @@ int main()
             glm::mat4 view = camera.GetViewMatrix();;
             glm::mat4 model = glm::mat4(1.0f);
             
+ 
             cubeShader.use();
-            shader.setMat4("projection", projection);
-            shader.setMat4("view", view);
+            cubeShader.setMat4("projection", projection);
+            cubeShader.setMat4("view", view);
             //model = glm::translate(model, glm::vec3(3.0, 0.0, 0.0)); // backpack模型可能只有2个世界坐标那么大
-            shader.setMat4("model", model);
+            cubeShader.setMat4("model", model);
             cubeModel.Draw();
-            
+ 
  
             //glDisable(GL_DEPTH_TEST); // 关闭深度测试,让所有的法线都绘制出来
             

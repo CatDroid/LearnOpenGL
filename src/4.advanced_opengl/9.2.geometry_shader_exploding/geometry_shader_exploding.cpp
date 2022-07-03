@@ -13,6 +13,8 @@
 
 #include <iostream>
 
+#include "cube.h"
+
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
@@ -77,11 +79,13 @@ int main()
     // build and compile shaders
     // -------------------------
     Shader shader("9.2.geometry_shader.vs", "9.2.geometry_shader.fs", "9.2.geometry_shader.gs");
-
+    Shader cubeShader("9.3.cubemaps.vs", "9.3.cubemaps.fs");
+    
     // load models
     // -----------
     Model nanosuit(FileSystem::getPath("resources/objects/nanosuit/nanosuit.obj")); 
-
+    CubeModel cubeModel ;
+    
 	//glEnable(GL_CULL_FACE); // 默认没有打开面剔除
 	//glFrontFace(GL_CCW); // 这样可以看到单独一面的效果
 
@@ -104,22 +108,58 @@ int main()
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // configure transformation matrices
-        glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 1.0f, 100.0f);
-        glm::mat4 view = camera.GetViewMatrix();;
-        glm::mat4 model = glm::mat4(1.0f);
-        shader.use();
-        shader.setMat4("projection", projection);
-        shader.setMat4("view", view);
-        shader.setMat4("model", model);
+        // glfwGetTime 是GLFW初始化后流逝的时间 ,单位秒
+        float currentTimeStamp = static_cast<float>(glfwGetTime());
+             
+        #define NEAR_Z_PLANE 0.1f
+        
+        if (false)
+        {
+            // configure transformation matrices
+            glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, NEAR_Z_PLANE, 100.0f);
+            glm::mat4 view = camera.GetViewMatrix();;
+            glm::mat4 model = glm::mat4(1.0f);
+            shader.use();
+            shader.setMat4("projection", projection);
+            shader.setMat4("view", view);
+            shader.setMat4("model", model);
 
-		// glfwGetTime 是GLFW初始化后流逝的时间 ,单位秒
-		// 
-        // add time component to geometry shader in the form of a uniform
-        shader.setFloat("time", static_cast<float>(glfwGetTime())); 
+            // add time component to geometry shader in the form of a uniform
+            shader.setFloat("time", currentTimeStamp);
 
-        // draw model
-        nanosuit.Draw(shader);
+            // draw model
+            nanosuit.Draw(shader);
+        }
+   
+        // if(false)  // 绘制cube看效果
+        if (true)
+        {
+             
+                glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, NEAR_Z_PLANE, 100.0f);
+                glm::mat4 view = camera.GetViewMatrix();;
+                glm::mat4 model = glm::mat4(1.0f);
+                
+                cubeShader.use();
+                cubeShader.setMat4("projection", projection);
+                cubeShader.setMat4("view", view);
+                //model = glm::translate(model, glm::vec3(3.0, 0.0, 0.0));
+                cubeShader.setMat4("model", model);
+                cubeModel.Draw();
+                
+
+                //glDisable(GL_DEPTH_TEST); // 关闭深度测试,让所有的法线都绘制出来
+                
+                shader.use();
+                shader.setMat4("projection", projection);
+                shader.setMat4("view", view);
+                shader.setMat4("model", model);
+                shader.setFloat("time", currentTimeStamp);
+                cubeModel.Draw(); // 同样的模型, 但是用不用的shader画
+                
+                //glEnable(GL_DEPTH_TEST);
+
+            
+        }
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
