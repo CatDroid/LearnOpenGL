@@ -107,10 +107,12 @@ int main()
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        #define NEAR_Z_PLANE 0.1f
+        
         if (false)
         {
         // configure transformation matrices
-        glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 1.0f, 100.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, NEAR_Z_PLANE, 100.0f);
         glm::mat4 view = camera.GetViewMatrix();;
         glm::mat4 model = glm::mat4(1.0f);
         shader.use();
@@ -133,7 +135,7 @@ int main()
         }
         
         {
-            glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 1.0f, 100.0f);
+            glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, NEAR_Z_PLANE, 100.0f);
             glm::mat4 view = camera.GetViewMatrix();;
             glm::mat4 model = glm::mat4(1.0f);
             
@@ -144,8 +146,8 @@ int main()
             shader.setMat4("model", model);
             cubeModel.Draw();
             
-#if 0
-            glDisable(GL_DEPTH_TEST);
+ 
+            //glDisable(GL_DEPTH_TEST); // 关闭深度测试,让所有的法线都绘制出来
             
             normalShader.use();
             normalShader.setMat4("projection", projection);
@@ -153,8 +155,8 @@ int main()
             normalShader.setMat4("model", model);
             cubeModel.Draw(); // 同样的模型, 但是用不用的shader画
             
-            glEnable(GL_DEPTH_TEST);
-#endif
+            //glEnable(GL_DEPTH_TEST);
+ 
             
         }
         
