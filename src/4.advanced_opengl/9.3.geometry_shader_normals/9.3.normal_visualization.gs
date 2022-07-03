@@ -27,12 +27,14 @@ void GenerateLine(int index)
 
 	// 在viewspace做法线凸出
 
+    //gl_Position = gl_in[index].gl_Position;
     gl_Position = projection * gl_in[index].gl_Position;
 	gs_out.fColor = vec3(1.0, 1.0, 0.0);
     EmitVertex();
 
+    //gl_Position = gl_in[index].gl_Position + vec4(gs_in[index].normal, 0.0) * MAGNITUDE;
     gl_Position = projection * (gl_in[index].gl_Position + vec4(gs_in[index].normal, 0.0) * MAGNITUDE);
-	gs_out.fColor = vec3(1.0, 0.0, 0.0); 
+	gs_out.fColor = vec3(1.0, 1.0, 0.0);
     EmitVertex(); // 发射顶点也是设置 gl_Position 这个vs的输出 (几何着色器相当于多个顶点着色器)
 
     EndPrimitive();

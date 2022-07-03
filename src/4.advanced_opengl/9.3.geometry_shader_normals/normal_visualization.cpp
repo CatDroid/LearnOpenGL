@@ -13,6 +13,8 @@
 
 #include <iostream>
 
+#include "cube.h"
+
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
@@ -78,11 +80,13 @@ int main()
     // -------------------------
     Shader shader("9.3.default.vs", "9.3.default.fs");
     Shader normalShader("9.3.normal_visualization.vs", "9.3.normal_visualization.fs", "9.3.normal_visualization.gs");
+    Shader cubeShader("6.1.cubemaps.vs", "6.1.cubemaps.fs");
 
     // load models
     // -----------
     stbi_set_flip_vertically_on_load(true);
     Model backpack(FileSystem::getPath("resources/objects/backpack/backpack.obj"));
+    CubeModel cubeModel ;
 
     // render loop
     // -----------
@@ -103,6 +107,8 @@ int main()
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        if (false)
+        {
         // configure transformation matrices
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 1.0f, 100.0f);
         glm::mat4 view = camera.GetViewMatrix();;
@@ -114,6 +120,7 @@ int main()
 
         // draw model as usual
         backpack.Draw(shader);
+    
 
         // then draw model with normal visualizing geometry shader
         normalShader.use();
@@ -122,6 +129,36 @@ int main()
         normalShader.setMat4("model", model);
 
         backpack.Draw(normalShader);
+        
+        }
+        
+        {
+            glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 1.0f, 100.0f);
+            glm::mat4 view = camera.GetViewMatrix();;
+            glm::mat4 model = glm::mat4(1.0f);
+            
+            cubeShader.use();
+            shader.setMat4("projection", projection);
+            shader.setMat4("view", view);
+            //model = glm::translate(model, glm::vec3(3.0, 0.0, 0.0)); // backpack模型可能只有2个世界坐标那么大
+            shader.setMat4("model", model);
+            cubeModel.Draw();
+            
+#if 0
+            glDisable(GL_DEPTH_TEST);
+            
+            normalShader.use();
+            normalShader.setMat4("projection", projection);
+            normalShader.setMat4("view", view);
+            normalShader.setMat4("model", model);
+            cubeModel.Draw(); // 同样的模型, 但是用不用的shader画
+            
+            glEnable(GL_DEPTH_TEST);
+#endif 
+            
+        }
+        
+        
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------

@@ -8,13 +8,17 @@ out VS_OUT {
 
 uniform mat4 view;
 uniform mat4 model;
+uniform mat4 projection;
 
 void main()
 {
     mat3 normalMatrix = mat3(transpose(inverse(view * model)));
     vs_out.normal = vec3(vec4(normalMatrix * aNormal, 0.0)); // 同样法线也转换到view space
-
-    gl_Position = view * model * vec4(aPos, 1.0); 
+    gl_Position = view * model * vec4(aPos, 1.0);
+    
+    //vs_out.normal = vec3(projection * vec4(normalMatrix * aNormal, 0.0));
+    //gl_Position = projection * view * model * vec4(aPos, 1.0);
+    
 	// 注意这里还没有投影, 不是clip space, 是view space 
     // 后面有几何着色器gs, 所以也可以不写入 gl_Position, 而是写入自己定义的变量varying
     // 
