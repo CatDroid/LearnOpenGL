@@ -1,6 +1,7 @@
 #version 330 core
 layout (triangles) in;
-layout (line_strip, max_vertices = 6) out; // 输出一共6个顶点 共3个图元, 每个图元有两个顶点，组成一个Line
+//layout (line_strip, max_vertices = 6) out; // 输出一共6个顶点 共3个图元, 每个图元有两个顶点，组成一个Line
+layout (line_strip, max_vertices = 12) out; // view space + clip space都绘制法线
 
 // OpenGL 3.2 Core profile 支持 点、线带和三角形带 points line_strip triangle_strip
 //                         但不支持将三角形(triangles)作为输出 
