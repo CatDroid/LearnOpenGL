@@ -80,7 +80,7 @@ int main()
     // -------------------------
     Shader shader("9.3.default.vs", "9.3.default.fs");
     Shader normalShader("9.3.normal_visualization.vs", "9.3.normal_visualization.fs", "9.3.normal_visualization.gs");
-    Shader cubeShader("6.1.cubemaps.vs", "6.1.cubemaps.fs");
+    Shader cubeShader("9.3.cubemaps.vs", "9.3.cubemaps.fs");
 
     // load models
     // -----------
@@ -154,7 +154,7 @@ int main()
             cubeModel.Draw(); // 同样的模型, 但是用不用的shader画
             
             glEnable(GL_DEPTH_TEST);
-#endif 
+#endif
             
         }
         
