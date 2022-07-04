@@ -89,21 +89,29 @@ int main()
          0.05f,  0.05f,  0.0f, 1.0f, 1.0f
     };
     unsigned int quadVAO, quadVBO;
-    glGenVertexArrays(1, &quadVAO);
     glGenBuffers(1, &quadVBO);
-    glBindVertexArray(quadVAO);
     glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+    
+    glGenVertexArrays(1, &quadVAO);
+    
+    glBindVertexArray(quadVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(2 * sizeof(float)));
+    
+    
     // also set instance data
     glEnableVertexAttribArray(2);
     glBindBuffer(GL_ARRAY_BUFFER, instanceVBO); // this attribute comes from a different vertex buffer
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glVertexAttribDivisor(2, 1); // tell OpenGL this is an instanced vertex attribute.
+    // 实例化数组 也是一个普通的VBO, 只是加了 glVertexAttribDivisor这个调用 定义某个属性的除数(Divisor)
+    // Divisor =0逐个顶点更新 =1每一个实例更新 =2每两个实例更新..
+    
 
 
     // render loop
