@@ -45,6 +45,26 @@ int main()
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
+	/*
+		想要在OpenGL中使用MSAA，我们必须要使用一个能在每个像素中存储大于1个颜色值的颜色缓冲（因为多重采样需要我们为每个采样点都储存一个颜色）。
+		所以，我们需要一个新的缓冲类型，来存储特定数量的多重采样样本，
+		它叫做多重采样缓冲(Multisample Buffer)。
+
+
+		大多数的窗口系统都应该提供了一个多重采样缓冲，用以代替默认的颜色缓冲
+
+		GLFW同样给了我们这个功能，我们所要做的只是提示(Hint) GLFW，我们希望使用一个包含N个样本的多重采样缓冲
+
+		每个屏幕坐标就会使用一个包含"4个子采样点"的颜色缓冲， 
+
+		GLFW会自动创建一个"每像素4个子采样点"的深度和模板缓冲。
+		
+		这也意味着所有缓冲的大小都增长了4倍。
+	*/
+
+	// glfwWindowHint(GLFW_SAMPLES, 4); //  注释这个可以对比效果
+
+
     // glfw window creation
     // --------------------
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
@@ -70,6 +90,11 @@ int main()
         return -1;
     }
 
+	/*
+	我们还需要调用glEnable并启用GL_MULTISAMPLE，来启用多重采样。
+	在大多数OpenGL的驱动上，多重采样都是默认启用的
+	
+	*/
     // configure global opengl state
     // -----------------------------
     glEnable(GL_DEPTH_TEST);
