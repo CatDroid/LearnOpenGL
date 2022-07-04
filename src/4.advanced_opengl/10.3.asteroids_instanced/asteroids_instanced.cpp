@@ -86,23 +86,34 @@ int main()
 
     // generate a large list of semi-random model transformation matrices
     // ------------------------------------------------------------------
-    unsigned int amount = 100000;
+    unsigned int amount = 100000; // 数量变大了 
+
     glm::mat4* modelMatrices;
     modelMatrices = new glm::mat4[amount];
+
     srand(static_cast<unsigned int>(glfwGetTime())); // initialize random seed
-    float radius = 150.0;
-    float offset = 25.0f;
+    
+	float radius = 150.0;
+    float offset = 25.0f; // 随机偏移也变大了
+
     for (unsigned int i = 0; i < amount; i++)
     {
         glm::mat4 model = glm::mat4(1.0f);
+
         // 1. translation: displace along circle with 'radius' in range [-offset, offset]
         float angle = (float)i / (float)amount * 360.0f;
+
+		// 实际是 { sin(angle) * radius,   0 ,   cos(angle) * radius} 加上  随机偏移 [-offset, offset]
+	 
         float displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
         float x = sin(angle) * radius + displacement;
-        displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
+        
+		       displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
         float y = displacement * 0.4f; // keep height of asteroid field smaller compared to width of x and z
-        displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
+
+		       displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
         float z = cos(angle) * radius + displacement;
+
         model = glm::translate(model, glm::vec3(x, y, z));
 
         // 2. scale: Scale between 0.05 and 0.25f
@@ -117,7 +128,7 @@ int main()
         modelMatrices[i] = model;
     }
 
-    // configure instanced array
+    // configure instanced array 实例化数组(实际是个vbo)
     // -------------------------
     unsigned int buffer;
     glGenBuffers(1, &buffer);
@@ -127,11 +138,18 @@ int main()
     // set transformation matrices as an instance vertex attribute (with divisor 1)
     // note: we're cheating a little by taking the, now publicly declared, VAO of the model's mesh(es) and adding new vertexAttribPointers
     // normally you'd want to do this in a more organized fashion, but for learning purposes this will do.
+	// 注意这里我们将Mesh的VAO从私有变量改为了公有变量，让我们能够访问它的顶点数组对象。
+	// VAO是原来mesh中分配的 存放 顶点坐标-0 法线-1 纹理坐标-2 切线-3 副法-4 骨骼id-5 骨骼权重-6 5+2=7 从0到6都用了
+	// !! 这里会覆盖掉原来 从 3到6之后 vao的"记录" 
+	// !! 当我们顶点属性的类型大于vec4时，就要多进行一步处理了。
+	//    顶点属性最大允许的数据大小等于一个vec4。因为一个mat4本质上是4个vec4，
+	//    我们需要为这个矩阵预留4个顶点属性。
+	//    因为我们将它的位置值设置为3，矩阵每一列的顶点属性位置值就是3、4、5和6。
     // -----------------------------------------------------------------------------------------------------------------------------------
-    for (unsigned int i = 0; i < rock.meshes.size(); i++)
+    for (unsigned int i = 0; i < rock.meshes.size(); i++) // size实际只有1个，但是VAO在mesh中, 所以遍历
     {
-        unsigned int VAO = rock.meshes[i].VAO;
-        glBindVertexArray(VAO);
+        unsigned int VAO = rock.meshes[i].VAO;  // 每个mesh而不是每个模型 单独一个VAO 但是对应的VBO是同一个
+        glBindVertexArray(VAO); 
         // set attribute pointers for matrix (4 times vec4)
         glEnableVertexAttribArray(3);
         glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)0);
@@ -142,6 +160,7 @@ int main()
         glEnableVertexAttribArray(6);
         glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)(3 * sizeof(glm::vec4)));
 
+		// 设置属性的除数为1, 每一个实例,属性更新一次
         glVertexAttribDivisor(3, 1);
         glVertexAttribDivisor(4, 1);
         glVertexAttribDivisor(5, 1);
@@ -194,6 +213,9 @@ int main()
         for (unsigned int i = 0; i < rock.meshes.size(); i++)
         {
             glBindVertexArray(rock.meshes[i].VAO);
+			// 使用索引draw实例 
+			// rock.meshes[i].indices.size()  对应mesh的索引数目
+			// amount 多少个实例
             glDrawElementsInstanced(GL_TRIANGLES, static_cast<unsigned int>(rock.meshes[i].indices.size()), GL_UNSIGNED_INT, 0, amount);
             glBindVertexArray(0);
         }

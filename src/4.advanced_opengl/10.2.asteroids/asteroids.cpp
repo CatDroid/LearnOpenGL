@@ -85,23 +85,32 @@ int main()
 
     // generate a large list of semi-random model transformation matrices
     // ------------------------------------------------------------------
-    unsigned int amount = 1000;
+    unsigned int amount = 1000; // ÊýÁ¿
+
     glm::mat4* modelMatrices;
     modelMatrices = new glm::mat4[amount];
+
     srand(static_cast<unsigned int>(glfwGetTime())); // initialize random seed
+
     float radius = 50.0;
-    float offset = 2.5f;
+    float offset = 2.5f; // Ëæ»úÆ«ÒÆ 
+
     for (unsigned int i = 0; i < amount; i++)
     {
         glm::mat4 model = glm::mat4(1.0f);
         // 1. translation: displace along circle with 'radius' in range [-offset, offset]
-        float angle = (float)i / (float)amount * 360.0f;
-        float displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
+        float angle = (float)i * 360.0f / (float)amount ;
+
+		// { sin(angle) * radius,   0 ,   cos(angle) * radius}
+        float displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset; // -2.5~2.5 =  [5~0]-2.5 
         float x = sin(angle) * radius + displacement;
-        displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
+
+                displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
         float y = displacement * 0.4f; // keep height of asteroid field smaller compared to width of x and z
-        displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
+       
+		        displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
         float z = cos(angle) * radius + displacement;
+
         model = glm::translate(model, glm::vec3(x, y, z));
 
         // 2. scale: Scale between 0.05 and 0.25f
