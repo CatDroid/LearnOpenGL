@@ -70,6 +70,9 @@ void blitToScreen(GLuint fromFbo, int width, int height)
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
+#define CHECK_ERROR  {auto error = glGetError(); if (error != GL_NO_ERROR) { printf("gl error = 0x%x (line = %d)\n", error, __LINE__); }};
+
+
 int main()
 {
     // glfw: initialize and configure
@@ -237,8 +240,16 @@ int main()
 
 
 	// !! 绑定还是 glFramebufferTexture2D 但是 纹理目标是 GL_TEXTURE_2D_MULTISAMPLE
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, textureColorBufferMultiSampled, 0);
-    
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D_MULTISAMPLE, textureColorBufferMultiSampled, 0);
+    CHECK_ERROR
+
+    // 作用在当前绑定的fbo 
+    // 无论使用的FBO是何种类型，在数组中除GL_NONE以外的值最多只能使用一次
+    // RenderDoc 会看到 slot 0 是 Fbo附件1对应的颜色纹理， slot是从shader看过去
+    GLenum swizzle[] = {GL_COLOR_ATTACHMENT1,  GL_NONE};
+    glDrawBuffers(sizeof(swizzle)/sizeof(swizzle[0]), swizzle);
+    CHECK_ERROR
+
 	// !! rbo也可以是多重采样的  格式还是D24S8  
 	// create a (also multisampled) renderbuffer object for depth and stencil attachments
     unsigned int rbo;
@@ -302,6 +313,7 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
 
+
         // set transformation matrices		
         shader.use();
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
@@ -326,14 +338,18 @@ int main()
         // 2. now blit multisampled buffer(s) to normal colorbuffer of intermediate FBO. Image is stored in screenTexture
         //    读取和绘制的帧缓冲目标 分开绑定
         
-        // 设置读写的附件
-        glDrawBuffer(GL_COLOR_ATTACHMENT0);
-        glReadBuffer(GL_COLOR_ATTACHMENT0);
         
+        //glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+        //glReadBuffer(GL_COLOR_ATTACHMENT1);
+
         // 设置读写的fbo
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer);
+        // 设置读写的附件  修改的是当前绑定GL_READ_FRAMEBUFFER的fbo (RenderDoc抓帧可以看到), 并不是context的变量 
+        // glReadBuffer 影响这个fbo, 在执行glReadPixelBuffer  glBlitFrameBuffer   glCopyTexImage2D 等命令是对哪个附件操作
+        glReadBuffer(GL_COLOR_ATTACHMENT1);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, intermediateFBO);
-        
+        glDrawBuffer(GL_COLOR_ATTACHMENT0);
+
 		//     将多重采样缓冲位块(Blit)传送到一个没有使用多重采样纹理附件的FBO
 		//     然而，这也意味着我们需要生成一个新的FBO，作为中介帧缓冲对象
         glBlitFramebuffer(0, 0, SCR_WIDTH, SCR_HEIGHT, 0, 0, SCR_WIDTH, SCR_HEIGHT, GL_COLOR_BUFFER_BIT, GL_NEAREST);
@@ -376,6 +392,8 @@ int main()
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, screenTexture); // use the now resolved color attachment as the quad's texture
         glDrawArrays(GL_TRIANGLES, 0, 6);
+
+
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
