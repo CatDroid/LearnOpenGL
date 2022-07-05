@@ -32,6 +32,44 @@ bool firstMouse = true;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
+
+void blitToScreen(GLuint fromFbo, int width, int height)
+{
+    /*
+     
+     void glDrawBuffer(GLenum buf); // 设置到上下文 ???
+     void glNamedFramebufferDrawBuffer(GLuint framebuffer, GLenum buf); // 设置到给定的fbo??
+     
+     对于默认缓冲区 可以指定4个颜色缓冲来写入: (前后左右,GL_NONE)
+        GL_NONE, GL_FRONT_LEFT, GL_FRONT_RIGHT, GL_BACK_LEFT, GL_BACK_RIGHT, GL_FRONT, GL_BACK, GL_LEFT, GL_RIGHT, and GL_FRONT_AND_BACK
+     
+        对于单缓冲，初始值是 GL_FRONT
+        对于双缓冲，初始值是 GL_BACK
+     
+     对于FBO对象, 可选值是 GL_COLOR_ATTACHMENT[n] 或者 GL_NONE
+     
+     */
+    
+    
+    // 绘制到屏幕(fbo=0)的back缓冲区
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glDrawBuffer(GL_BACK);
+    
+    // 从 fromFBO的 color0附件
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, fromFbo);
+    glReadBuffer(GL_COLOR_ATTACHMENT0);
+   
+    // 只拷贝颜色附件
+    glBlitFramebuffer(0, 0, width, height,
+                      0, 0, width, height,
+                      GL_COLOR_BUFFER_BIT,// 颜色附件
+                      GL_NEAREST
+                      );
+    
+    // 读写帧缓冲都设置为0
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 int main()
 {
     // glfw: initialize and configure
@@ -70,24 +108,24 @@ int main()
         return -1;
     }
 
-	// ��դ���Ὣһ��ͼԪ�����ж�����Ϊ���룬������ת��Ϊһϵ�е�ƬԪ
-	// ��դ��������ĳ�ַ�ʽ������ "ÿ������" �������ڵ�"ƬԪ/��Ļ����"
+	// 光栅器会将一个图元的所有顶点作为输入，并将它转换为一系列的片元
+	// 光栅器必须以某种方式来决定 "每个顶点" 最终所在的"片元/屏幕坐标"
 	
-	// һ����Ļ���ص�����ÿ�����ص����İ�����һ��������(Sample Point), ���ᱻ��������''���������''�Ƿ�''�ڸ���ĳ������''��
-	// ���ز������������ǽ�"��һ�Ĳ�����"��Ϊ"���������"
-	// ���ǲ���ʹ��"�������ĵĵ�һ������"��ȡ����֮�������ض�ͼ�����е�4��"�Ӳ�����(Subsample)"
-	// ��Ҳ��ζ����ɫ����Ĵ�С�������Ӳ���������Ӷ�����
+	// 一个屏幕像素的网格，每个像素的中心包含有一个采样点(Sample Point), 它会被用来决定''这个三角形''是否''遮盖了某个像素''。
+	// 多重采样所做的正是将"单一的采样点"变为"多个采样点"
+	// 我们不再使用"像素中心的单一采样点"，取而代之的是以特定图案排列的4个"子采样点(Subsample)"
+	// 这也意味着颜色缓冲的大小会随着子采样点的增加而增加
 	//
-	// MSAA�����Ĺ�����ʽ�ǣ������������ڸ��˶��ٸ��Ӳ����㣬��ÿ��ͼԪ�У�ÿ������ֻ����һ��Ƭ����ɫ����
-	// Ƭ����ɫ����ʹ�õĶ������ݻ��ֵ��""ÿ�����ص�����""�����õ��Ľ����ɫ�ᱻ������""ÿ�����ڸ�ס���Ӳ�����""��
-	// (!!Ҳ����������������Ϊ��ֵλ��!!)                                    (!!ֻ�ửһ��,���浽���ǵ��Ӳ�������!!)
+	// MSAA真正的工作方式是，无论三角形遮盖了多少个子采样点，（每个图元中）每个像素只运行一次片段着色器。
+	// 片段着色器所使用的顶点数据会插值到""每个像素的中心""，所得到的结果颜色会被储存在""每个被遮盖住的子采样点""中
+	// (!!也就是以像素中心作为插值位置!!)                                    (!!只会画一次,保存到覆盖的子采样点中!!)
 
 
-	// ����Ȳ�����˵��ÿ����������ֵ����"������Ȳ���"֮ǰ��"��ֵ"��"����������"�� 
-	// ��ģ�������˵�����Ƕ�ÿ����������������ÿ�����أ��洢һ��ģ��ֵ��
-	// ��Ȼ����Ҳ��ζ��""��Ⱥ�ģ�建��Ĵ�С""�����""�Ӳ�����ĸ���""��
+	// 对深度测试来说，每个顶点的深度值会在"运行深度测试"之前被"插值"到"各个子样本"中 
+	// 对模板测试来说，我们对每个子样本，而不是每个像素，存储一个模板值。
+	// 当然，这也意味着""深度和模板缓冲的大小""会乘以""子采样点的个数""。
 
-	// ���ز����Ļ���(����, ��Ⱦ����)��������Ϊ֡����ĸ���
+	// 多重采样的缓冲(纹理, 渲染缓冲)，将其作为帧缓冲的附件
 
     // configure global opengl state
     // -----------------------------
@@ -187,30 +225,30 @@ int main()
     // create a multisampled color attachment texture
     unsigned int textureColorBufferMultiSampled;
     glGenTextures(1, &textureColorBufferMultiSampled);
-	// !! ע�����������ֻ��Texture2D����MultiSampleĿ������
+	// !! 注意这个纹理不只是Texture2D还是MultiSample目标类型
     glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, textureColorBufferMultiSampled);
-    // !! ע������ڴ�Ҳ���� glTexImage2D ����ר�ŵ�  glTexImage2D+Multisample ������������������Ŀ=4
-	//    �������� ��������һ������ fixedsamplelocations,  rbo��û��(�������ڲ���)
+    // !! 注意分配内存也不是 glTexImage2D 而是专门的  glTexImage2D+Multisample 参数增加了子样本数目=4
+	//    对于纹理 还增加了一个参数 fixedsamplelocations,  rbo就没有(不能用于采样)
 	// 
-	//    fixedsamplelocations = GL_TRUE��ͼ�񽫻��ÿ������ʹ����ͬ������λ���Լ���ͬ�������Ӳ�������� ???
+	//    fixedsamplelocations = GL_TRUE，图像将会对每个纹素使用相同的样本位置以及相同数量的子采样点个数 ???
 	glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, MULTI_SAMPLE_NUMBER , GL_RGB, SCR_WIDTH, SCR_HEIGHT, GL_TRUE);
     
 	glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
 
 
-	// !! �󶨻��� glFramebufferTexture2D ���� ����Ŀ���� GL_TEXTURE_2D_MULTISAMPLE
+	// !! 绑定还是 glFramebufferTexture2D 但是 纹理目标是 GL_TEXTURE_2D_MULTISAMPLE
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, textureColorBufferMultiSampled, 0);
     
-	// !! rboҲ�����Ƕ��ز�����  ��ʽ����D24S8  
+	// !! rbo也可以是多重采样的  格式还是D24S8  
 	// create a (also multisampled) renderbuffer object for depth and stencil attachments
     unsigned int rbo;
     glGenRenderbuffers(1, &rbo);
     glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-	// !! ע������ڴ� Ҳ���� glRenderbufferStorage ����ר�ŵ� glRenderbufferStorage+Multisample  ������������������Ŀ=4
+	// !! 注意分配内存 也不是 glRenderbufferStorage 而是专门的 glRenderbufferStorage+Multisample  参数增加了子样本数目=4
     glRenderbufferStorageMultisample(GL_RENDERBUFFER, MULTI_SAMPLE_NUMBER, GL_DEPTH24_STENCIL8, SCR_WIDTH, SCR_HEIGHT);
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
-	// ��rboʹ�� glFramebuffer+Renderbuffer ���� glFramebuffer+Texture2D
+	// 绑定rbo使用 glFramebuffer+Renderbuffer 不是 glFramebuffer+Texture2D
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
 
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
@@ -274,32 +312,64 @@ int main()
         glBindVertexArray(cubeVAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
-		// !! ��Ϊ���ز���������һ���ر����ǲ���ֱ�ӽ����ǵĻ���ͼ�������������㣬��������ɫ���ж����ǽ��в���
-		//    һ�����ز�����ͼ���������ͨͼ��������Ϣ��������Ҫ��������С���߻�ԭ(Resolve)ͼ��
-		//   ���ز���֡����Ļ�ԭͨ����ͨ��glBlitFramebuffer�����
+		// !! 因为多重采样缓冲有一点特别，我们不能直接将它们的缓冲图像用于其他运算，比如在着色器中对它们进行采样
+		//    一个多重采样的图像包含比普通图像更多的信息，我们所要做的是缩小或者还原(Resolve)图像。
+		//   多重采样帧缓冲的还原通常是通过glBlitFramebuffer来完成
 
-		//  ���⣬ ��һ�����ز���������ͼ�񲻽��л�ԭֱ�Ӵ�����ɫ��Ҳ�ǿ��е�
-		//  GLSL�ṩ��������ѡ��������ܹ�������ͼ���ÿ�����������в������������ǿ��Դ��������Լ��Ŀ�����㷨
-		//  Ҫ���ȡÿ������������ɫֵ������Ҫ������uniform����������Ϊsampler2DMS��������ƽ��ʹ�õ�sampler2D
+		//  另外， 将一个多重采样的纹理图像不进行还原直接传入着色器也是可行的
+		//  GLSL提供了这样的选项，让我们能够对纹理图像的每个子样本进行采样，所以我们可以创建我们自己的抗锯齿算法
+		//  要想获取每个子样本的颜色值，你需要将纹理uniform采样器设置为sampler2DMS，而不是平常使用的sampler2D
 		// 
 		//  uniform sampler2DMS screenTextureMS;
-		//  vec4 colorSample = texelFetch(screenTextureMS, TexCoords, 3);  // ��4��������
+		//  vec4 colorSample = texelFetch(screenTextureMS, TexCoords, 3);  // 第4个子样本
 
         // 2. now blit multisampled buffer(s) to normal colorbuffer of intermediate FBO. Image is stored in screenTexture
-        //    ��ȡ�ͻ��Ƶ�֡����Ŀ�� �ֿ���
+        //    读取和绘制的帧缓冲目标 分开绑定
+        
+        // 设置读写的附件
+        glDrawBuffer(GL_COLOR_ATTACHMENT0);
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
+        
+        // 设置读写的fbo
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, intermediateFBO);
-		//     �����ز�������λ��(Blit)���͵�һ��û��ʹ�ö��ز�������������FBO
-		//     Ȼ������Ҳ��ζ��������Ҫ����һ���µ�FBO����Ϊ�н�֡�������
+        
+		//     将多重采样缓冲位块(Blit)传送到一个没有使用多重采样纹理附件的FBO
+		//     然而，这也意味着我们需要生成一个新的FBO，作为中介帧缓冲对象
         glBlitFramebuffer(0, 0, SCR_WIDTH, SCR_HEIGHT, 0, 0, SCR_WIDTH, SCR_HEIGHT, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
+        
+        /*
+            glBlitFrameBuffer每次只拷贝一个附件(缓冲区),需要使用glReadBuffer和glDrawBuffer来指定
+         
+            还可以指定 深度和模板附件/缓冲区
+            #define GL_DEPTH_BUFFER_BIT 0x00000100
+            #define GL_STENCIL_BUFFER_BIT 0x00000400
+         
+            for (int i = 0; i < Attachments.size(); ++i)
+            {
+                glReadBuffer(Attachments[i]);
+                glDrawBuffer(Attachments[i]);
+
+                glBlitFramebuffer(0, 0,
+                                        width,
+                                        height,
+                                        0, 0,
+                                        width,
+                                        height,
+                                        GL_COLOR_BUFFER_BIT,
+                                        GL_NEAREST);
+            }
+         
+         */
+        
         // 3. now render quad with scene's visuals as its texture image
-        glBindFramebuffer(GL_FRAMEBUFFER, 0); // ͬʱ���˶�ȡ�ͻ��Ƶ�֡����Ŀ��
+        glBindFramebuffer(GL_FRAMEBUFFER, 0); // 同时绑定了读取和绘制的帧缓冲目标
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         glDisable(GL_DEPTH_TEST);
 
-		// !! ���Ǳ�Ե��������ĺ��ڴ����˾������µ��¾��
+		// !! 像是边缘检测这样的后期处理滤镜会重新导致锯齿
         // draw Screen quad
         screenShader.use();
         glBindVertexArray(quadVAO);
