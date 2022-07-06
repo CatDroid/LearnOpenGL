@@ -139,6 +139,7 @@ set(4.advanced_opengl
     10.3.asteroids_instanced
     11.1.anti_aliasing_msaa
     11.2.anti_aliasing_offscreen
+	11.3.customAA
 )
 
 set(5.advanced_lighting
