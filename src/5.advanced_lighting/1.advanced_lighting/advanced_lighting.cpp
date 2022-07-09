@@ -25,6 +25,12 @@ const unsigned int SCR_HEIGHT = 600;
 bool blinn = false;
 bool blinnKeyPressed = false;
 
+bool justSpecularTerm = false;
+bool justSpecularTermPressed = false;
+
+bool lowShininess = false;
+bool lowShininessPressed = false;
+
 // camera
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 float lastX = (float)SCR_WIDTH / 2.0;
@@ -151,14 +157,44 @@ int main()
         // set light uniforms
         shader.setVec3("viewPos", camera.Position);
         shader.setVec3("lightPos", lightPos);
-        shader.setInt("blinn", blinn);
+        shader.setInt("blinn", blinn); // 设置的是shader中 bool变量
+		shader.setInt("justSpecularTerm", justSpecularTerm);
+		shader.setInt("lowShininess", lowShininess);
         // floor
         glBindVertexArray(planeVAO);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, floorTexture);
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
-        std::cout << (blinn ? "Blinn-Phong" : "Phong") << std::endl;
+		static bool sBlinn = blinn;
+		static bool sJustSpecularTerm = justSpecularTerm;
+		static bool sLowShininess = lowShininess;
+		bool log = false;
+
+		if (sBlinn != blinn || sJustSpecularTerm != justSpecularTerm || sLowShininess != lowShininess)
+		{
+			sBlinn = blinn;
+			sJustSpecularTerm = justSpecularTerm;
+			sLowShininess = lowShininess;
+			log = true;
+		}
+		else
+		{
+			static uint32_t lessPrint = 0;
+			if ( (lessPrint++ & (uint32_t)0xFFFF) == 0)
+			{
+				log = true;
+			}
+		}
+
+		if (log)
+		{
+			std::cout << "hints ----------------------------------------- " << std::endl;
+			std::cout << (blinn ? "Blinn-Phong" : "Phong")                                             << ", Press B switch" << std::endl;
+			std::cout << (!justSpecularTerm ? "Diff + Specular " : "Just Show Specular") << ", Press N switch" << std::endl;
+			std::cout << (!lowShininess ? "Normal Shininess" : "Low Shininess")             << ", Press M switch" << std::endl;
+			
+		}
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -191,6 +227,7 @@ void processInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         camera.ProcessKeyboard(RIGHT, deltaTime);
 
+	// 使用B键 切换blin-phong和phong光照模型 
     if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS && !blinnKeyPressed) 
     {
         blinn = !blinn;
@@ -200,6 +237,28 @@ void processInput(GLFWwindow *window)
     {
         blinnKeyPressed = false;
     }
+
+	// 底高光 shininess  low
+	if (glfwGetKey(window, GLFW_KEY_N) == GLFW_PRESS && !justSpecularTermPressed)
+	{
+		justSpecularTerm = !justSpecularTerm;
+		justSpecularTermPressed = true;
+	}
+	if (glfwGetKey(window, GLFW_KEY_N) == GLFW_RELEASE)
+	{
+		justSpecularTermPressed = false;
+	}
+
+	// 只显示高光部分 
+	if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS && !lowShininessPressed)
+	{
+		lowShininess = !lowShininess;
+		lowShininessPressed = true;
+	}
+	if (glfwGetKey(window, GLFW_KEY_M) == GLFW_RELEASE)
+	{
+		lowShininessPressed = false;
+	}
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
