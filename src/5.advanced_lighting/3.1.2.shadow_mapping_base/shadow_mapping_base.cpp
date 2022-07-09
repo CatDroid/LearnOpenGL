@@ -39,6 +39,59 @@ float lastFrame = 0.0f;
 // meshes
 unsigned int planeVAO;
 
+bool fixFrontFaceShadowAcneEnabled = false;
+bool fixFrontFaceShadowAcneEnabledPressed = false;
+
+void logHint()
+{
+	{
+
+		static bool sfixFrontFaceShadowAcneEnabled = fixFrontFaceShadowAcneEnabled;
+		bool log = false;
+
+		if (sfixFrontFaceShadowAcneEnabled != fixFrontFaceShadowAcneEnabled)
+		{
+
+			sfixFrontFaceShadowAcneEnabled = fixFrontFaceShadowAcneEnabled;
+
+			log = true;
+		}
+		else
+		{
+			static uint32_t lessPrint = 0;
+			if ((lessPrint++ & (uint32_t)0xFFFF) == 0)
+			{
+				log = true;
+			}
+		}
+
+		if (log)
+		{
+			std::cout << "hints ----------------------------------------- " << std::endl;
+
+			std::cout << (fixFrontFaceShadowAcneEnabled ? "Enable Front Face Cull" : "Disable Front Face Cull ")
+				<< ", Press  B switch"
+				<< std::endl;
+		}
+	}
+}
+
+void processHint(GLFWwindow *window)
+{
+	if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS && !fixFrontFaceShadowAcneEnabledPressed)
+	{
+		fixFrontFaceShadowAcneEnabledPressed = true;
+
+		fixFrontFaceShadowAcneEnabled = !fixFrontFaceShadowAcneEnabled;
+
+	}
+
+	if (glfwGetKey(window, GLFW_KEY_B) == GLFW_RELEASE)
+	{
+		fixFrontFaceShadowAcneEnabledPressed = false;
+	}
+}
+
 int main()
 {
     // glfw: initialize and configure
@@ -92,12 +145,15 @@ int main()
     float planeVertices[] = {
         // positions            // normals         // texcoords
          25.0f, -0.5f,  25.0f,  0.0f, 1.0f, 0.0f,  25.0f,  0.0f,
+		 -25.0f, -0.5f, -25.0f,  0.0f, 1.0f, 0.0f,   0.0f, 25.0f, // CCW 
         -25.0f, -0.5f,  25.0f,  0.0f, 1.0f, 0.0f,   0.0f,  0.0f,
-        -25.0f, -0.5f, -25.0f,  0.0f, 1.0f, 0.0f,   0.0f, 25.0f,
+	
 
          25.0f, -0.5f,  25.0f,  0.0f, 1.0f, 0.0f,  25.0f,  0.0f,
+		 25.0f, -0.5f, -25.0f,  0.0f, 1.0f, 0.0f,  25.0f, 25.0f,
         -25.0f, -0.5f, -25.0f,  0.0f, 1.0f, 0.0f,   0.0f, 25.0f,
-         25.0f, -0.5f, -25.0f,  0.0f, 1.0f, 0.0f,  25.0f, 25.0f
+		
+         
     };
     // plane VAO
     unsigned int planeVBO;
@@ -183,13 +239,60 @@ int main()
         simpleDepthShader.use();
         simpleDepthShader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
 
+		/* 为了解决阴影偏移带来的 悬浮问题Peter Panning, 
+		
+		   阴影失真/摩尔纹, 使用了正面剔除方法
+		        1. 只有物体背面才会在阴影图, 产生深度信息
+		            (打开了之后, 计算阴影图时候, 地面就会被cull了, 地面不会在阴影图记录
+		            自阴影就没有了)
+		        2. 只对内部不会对外开口的实体物体有效  
+		        3. 接近阴影的物体仍然会出现不正确的效果 ??
+		        4. 解决正面的阴影失真--比如地面
+	            5. 背面还是会出现阴影悬浮---开口物体(并且物体表面非双面),不能cull
+				     可使用 glPolygonOffset 解决 ??
+					// glEnable(GL_POLYGON_OFFSET_FILL);
+					// glPolygonOffset(1.0f, 0.0f);
+
+					When 
+					GL_POLYGON_OFFSET_FILL, 
+					GL_POLYGON_OFFSET_LINE, or 
+					GL_POLYGON_OFFSET_POINT is enabled,
+
+					void glPolygonOffset(	GLfloat factor, GLfloat units);
+					多边形每个由相应顶点内插得到的深度值将被“偏移“
+					进行深度测试和写入深度缓冲区之前，会把深度值加上一个offset。
+
+					offset的计算公式是factor * DZ + r*units ，
+
+					factor和units是由glPolygonOffset指定
+					DZ是多边形深度值相对其屏幕面积变化的一个量算值  ???
+					r 是一个可以确保能产生一个可用于实行的偏移最小值。???
+
+		*/
+		bool enableFaceFaceCull = fixFrontFaceShadowAcneEnabled;
+		
+		if (enableFaceFaceCull)
+		{
+			glEnable(GL_CULL_FACE);
+			//glFrontFace(GL_CCW); 
+			glCullFace(GL_FRONT);
+		}
+		
+
         glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
         glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
-            glClear(GL_DEPTH_BUFFER_BIT);
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, woodTexture);
-            renderScene(simpleDepthShader);
+        glClear(GL_DEPTH_BUFFER_BIT);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, woodTexture);
+        renderScene(simpleDepthShader);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		if (enableFaceFaceCull)
+		{
+			//glDisable(GL_CULL_FACE);
+			glCullFace(GL_BACK); // !! 注意 
+		}
+	
 
         // reset viewport
         glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
@@ -222,6 +325,8 @@ int main()
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, depthMap);
         //renderQuad();
+
+		logHint();
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -388,6 +493,8 @@ void processInput(GLFWwindow *window)
         camera.ProcessKeyboard(LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         camera.ProcessKeyboard(RIGHT, deltaTime);
+
+	processHint(window);
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
