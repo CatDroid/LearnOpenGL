@@ -22,8 +22,12 @@ unsigned int loadTexture(const char *path, bool gammaCorrection);
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
+
 bool gammaEnabled = false;
 bool gammaKeyPressed = false;
+
+bool framebufferGammaEnabled = false;
+bool framebufferGammaEnabledPressed = false;
 
 // camera
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
@@ -35,6 +39,43 @@ bool firstMouse = true;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
+void logHint()
+{
+	{
+		static bool sgammaEnabled = gammaEnabled;
+		static bool sframebufferGammaEnabled = framebufferGammaEnabled;
+		bool log = false;
+
+		if (sgammaEnabled != gammaEnabled
+			|| sframebufferGammaEnabled != framebufferGammaEnabled)
+		{
+			sgammaEnabled = gammaEnabled;
+			sframebufferGammaEnabled = framebufferGammaEnabled;
+
+			log = true;
+		}
+		else
+		{
+			static uint32_t lessPrint = 0;
+			if ((lessPrint++ & (uint32_t)0xFFFF) == 0)
+			{
+				log = true;
+			}
+		}
+
+		if (log)
+		{
+			std::cout << "hints ----------------------------------------- " << std::endl;
+			std::cout << (gammaEnabled ? "Gamma enabled" : "Gamma disabled")
+				<< ", Press Space switch"
+				<< std::endl;
+			std::cout << (framebufferGammaEnabled ? "Fbo Gamma enabled" : "Fbo Gamma disabled")
+				<< ", Press  B switch"
+				<< std::endl;
+		}
+	}
+}
+
 int main()
 {
     // glfw: initialize and configure
@@ -43,6 +84,21 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+	/*
+	OpenGL: If enabled and supported by the system, 
+				the GL_FRAMEBUFFER_SRGB enable will control sRGB rendering.
+				By default, sRGB rendering will be disabled.
+	
+	OpenGL ES: If enabled and supported by the system, 
+				the context will always have sRGB rendering enabled.
+				
+				对于OpenglES 默认是sRGB的
+				对于OpenGL sRGB默认是关闭的
+
+	实际上测试没有作用, 使用glEnable(GL_FRAMEBUFFER_SRGB)是有作用的
+	*/
+	//glfwWindowHint(GLFW_SRGB_CAPABLE, true);
 
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
@@ -79,6 +135,8 @@ int main()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+
+
     // build and compile shaders
     // -------------------------
     Shader shader("2.gamma_correction.vs", "2.gamma_correction.fs");
@@ -112,8 +170,10 @@ int main()
 
     // load textures
     // -------------
-    unsigned int floorTexture               = loadTexture(FileSystem::getPath("resources/textures/wood.png").c_str(), false);
-    unsigned int floorTextureGammaCorrected = loadTexture(FileSystem::getPath("resources/textures/wood.png").c_str(), true);
+    unsigned int floorTexture               
+		= loadTexture(FileSystem::getPath("resources/textures/wood.png").c_str(), false);
+    unsigned int floorTextureGammaCorrected 
+		= loadTexture(FileSystem::getPath("resources/textures/wood.png").c_str(), true);
 
     // shader configuration
     // --------------------
@@ -149,10 +209,37 @@ int main()
         // -----
         processInput(window);
 
+		/* OpengGL auto gamra-correct 
+		    开启GL_FRAMEBUFFER_SRGB以后，每次像素着色器运行后续帧缓冲，
+		   OpenGL将自动执行gamma校正，包括默认帧缓冲
+		   !! 这个也包括了glCear的颜色, 也会做校正 !!
+
+		   gamma校正将把线性颜色空间转变为非线性空间，
+		   所以在最后一步进行gamma校正是极其重要的。
+		   
+		   如果你在最后输出之前就进行gamma校正，
+		   所有的后续操作都是在操作不正确的颜色值。
+		   例如，如果你使用多个帧缓冲，
+		        你可能打算让两个帧缓冲之间传递的中间结果仍然保持线性空间颜色，
+		        只是给发送给监视器的最后的那个帧缓冲应用gamma校正。
+	        所以一般不会用这个
+
+		   */
+		if (framebufferGammaEnabled)
+		{
+			glEnable(GL_FRAMEBUFFER_SRGB);
+		}
+		else
+		{
+			glDisable(GL_FRAMEBUFFER_SRGB);
+		}
+		
+
         // render
         // ------
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 
         // draw objects
         shader.use();
@@ -165,14 +252,18 @@ int main()
         glUniform3fv(glGetUniformLocation(shader.ID, "lightColors"), 4, &lightColors[0][0]);
         shader.setVec3("viewPos", camera.Position);
         shader.setInt("gamma", gammaEnabled);
+		shader.setInt("dotLightAttenuation", gammaEnabled | framebufferGammaEnabled);
+
         // floor
         glBindVertexArray(planeVAO);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, gammaEnabled ? floorTextureGammaCorrected : floorTexture);
+        glBindTexture(GL_TEXTURE_2D, 
+			gammaEnabled || framebufferGammaEnabled ?
+			floorTextureGammaCorrected : floorTexture);
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
-        std::cout << (gammaEnabled ? "Gamma enabled" : "Gamma disabled") << std::endl;
-
+		logHint();
+	
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
@@ -204,15 +295,38 @@ void processInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         camera.ProcessKeyboard(RIGHT, deltaTime);
 
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !gammaKeyPressed)
-    {
-        gammaEnabled = !gammaEnabled;
-        gammaKeyPressed = true;
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !gammaKeyPressed)
+	{
+		gammaKeyPressed = true;
+
+		gammaEnabled = !gammaEnabled;
+		framebufferGammaEnabled = false;
+		std::cout << "framebuffer gamma disable,  change shader gamma-correctly" << std::endl;
     }
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_RELEASE)
     {
         gammaKeyPressed = false;
-    }
+		
+    } // 手动修改伽马纠正, 关闭fbo sRBG
+
+	if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS && !framebufferGammaEnabledPressed)
+	{
+		framebufferGammaEnabledPressed = true;
+
+		framebufferGammaEnabled = !framebufferGammaEnabled;
+		if (framebufferGammaEnabled)
+		{
+			std::cout << "framebuffer gamma enable, disable shader gamma-correctly" << std::endl;
+			gammaEnabled = false;
+		}
+	}
+
+	if (glfwGetKey(window, GLFW_KEY_B) == GLFW_RELEASE)
+	{
+		framebufferGammaEnabledPressed = false;
+	} // 打开fbo sRBG，关闭shader伽马纠正
+
+
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
