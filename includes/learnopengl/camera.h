@@ -30,9 +30,9 @@ public:
     // camera Attributes
     glm::vec3 Position;
     glm::vec3 Front;
-    glm::vec3 Up;      // Õâ¸ö»á¸ù¾İFrontÀ´µ÷Õû 
+    glm::vec3 Up;      // è¿™ä¸ªä¼šæ ¹æ®Frontæ¥è°ƒæ•´ 
     glm::vec3 Right;
-    glm::vec3 WorldUp; // Õâ¸ö»ù±¾ÊÇ¹Ì¶¨µÄ ²»»áµ÷Õû
+    glm::vec3 WorldUp; // è¿™ä¸ªåŸºæœ¬æ˜¯å›ºå®šçš„ ä¸ä¼šè°ƒæ•´
     // euler Angles
     float Yaw;
     float Pitch;

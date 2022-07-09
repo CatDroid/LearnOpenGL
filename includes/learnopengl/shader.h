@@ -84,11 +84,11 @@ public:
         if(geometryPath != nullptr)
         {
 			/*
-			������ɫ����������һ��ͼԪ�����������Σ���һ�鶥�㡣
+			几何着色器的输入是一个图元（如点或三角形）的一组顶点。
 
-			1. ������ɫ�������ڶ��㷢�͵���һ��ɫ���׶�֮ǰ����������任��
-			2. ������ɫ������Ȥ�ĵط����ڣ����ܹ�������һ�飩����任Ϊ��ȫ��ͬ��ͼԪ��
-			3. ���һ������ɱ�ԭ������Ķ���
+			1. 几何着色器可以在顶点发送到下一着色器阶段之前对它们随意变换。
+			2. 几何着色器最有趣的地方在于，它能够将（这一组）顶点变换为完全不同的图元，
+			3. 并且还能生成比原来更多的顶点
 			
 			*/
 
@@ -105,10 +105,10 @@ public:
         glAttachShader(ID, vertex);
         glAttachShader(ID, fragment);
         if(geometryPath != nullptr)
-            glAttachShader(ID, geometry); // ������ɫ��shaderҲ���Ը�����program 
+            glAttachShader(ID, geometry); // 几何着色器shader也可以附着上program 
 
 
-        glLinkProgram(ID); // ���program���������и��ŵ�shader
+        glLinkProgram(ID); // 最后program连接上所有附着的shader
         checkCompileErrors(ID, "PROGRAM");
 
 
