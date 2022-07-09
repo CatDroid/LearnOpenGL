@@ -272,11 +272,21 @@ unsigned int loadTexture(char const * path, bool gammaCorrection)
         }
         else if (nrComponents == 3)
         {
+			
             internalFormat = gammaCorrection ? GL_SRGB : GL_RGB;
             dataFormat = GL_RGB;
         }
         else if (nrComponents == 4)
         {
+			/* 
+				笔记
+				    1. 为了节省存储空间, 并且根据人眼对暗的敏感, 拍照保存的图片, 都会保存成SRGB
+					1. 伽马纠正的内部纹理格式是 GL_SRGB !! 数据格式还是GL_RGB
+					2. apha通道不做伽马纠正 但是带有alpha通道的的话 要用 GL_SRGB_ALPHA
+					3. 不是所有纹理都是在sRGB空间
+						diffuse纹理，这种为物体上色的纹理几乎都是在sRGB空间中的
+						specular贴图和法线贴图几乎都在线性空间中	
+			*/
             internalFormat = gammaCorrection ? GL_SRGB_ALPHA : GL_RGBA;
             dataFormat = GL_RGBA;
         }
