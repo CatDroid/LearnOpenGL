@@ -122,10 +122,11 @@ int main()
     const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
     unsigned int depthMapFBO;
     glGenFramebuffers(1, &depthMapFBO);
-    // create depth texture
+    // create depth texture 只能是深度纹理,不是是rbo,rbo不能采样 一般是1024x1024
     unsigned int depthMap;
     glGenTextures(1, &depthMap);
     glBindTexture(GL_TEXTURE_2D, depthMap);
+	// 纹理格式指定为GL_DEPTH_COMPONENT
     glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -134,10 +135,21 @@ int main()
     // attach depth texture as FBO's depth buffer
     glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
-    glDrawBuffer(GL_NONE);
+    /*
+	GL_NONE
+		然而，不包含颜色缓冲的帧缓冲对象是不完整的，
+		所以我们需要显式告诉OpenGL我们不适用任何颜色数据进行渲染。
+		我们通过将调用glDrawBuffer和glReadBuffer把读和绘制缓冲设置为GL_NONE来做这件事。
+	
+	glDrawBuffer/glReadBuffer
+		设置当前绑定的fbo在遇到glDraw或者glReadPixel glBlitFramebuffer时候读取那个附件
+
+	*/
+	
+	glDrawBuffer(GL_NONE);
     glReadBuffer(GL_NONE);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
+	
 
     // shader configuration
     // --------------------
@@ -164,18 +176,26 @@ int main()
 
         // render
         // ------
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        //glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // 1. render depth of scene to texture (from light's perspective)
         // --------------------------------------------------------------
-        glm::mat4 lightProjection, lightView;
+        glm::mat4 lightProjection, lightView; // 光源的视图和投影矩阵--光源空间
         glm::mat4 lightSpaceMatrix;
         float near_plane = 1.0f, far_plane = 7.5f;
+		// 注意是正交--平行光   左右-10~10 上下~10-10 近 1.0 远 7.5
+		//       当物体和片段不在深度贴图中时，它们就不会产生阴影。
         lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
+
+		// 摄像机的9参数矩阵: 位置--目标--垂直方向  这里是望向原点(这个方向应该跟方向光的lightDirect一致)
         lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
+
+		// 光源空间
         lightSpaceMatrix = lightProjection * lightView;
         // render scene from light's point of view
+
+		// 生成 深度贴图/阴影图
         simpleDepthShader.use();
         simpleDepthShader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
 
@@ -188,16 +208,16 @@ int main()
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
         // reset viewport
-        glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+        glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT); // 800x600
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // render Depth map to quad for visual debugging
+        // render Depth map to quad for visual debugging 渲染深度图 画在一个quad上
         // ---------------------------------------------
         debugDepthQuad.use();
         debugDepthQuad.setFloat("near_plane", near_plane);
         debugDepthQuad.setFloat("far_plane", far_plane);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, depthMap);
+        glBindTexture(GL_TEXTURE_2D, depthMap); 
         renderQuad();
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
