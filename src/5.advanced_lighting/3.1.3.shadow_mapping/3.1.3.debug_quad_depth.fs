@@ -17,6 +17,7 @@ float LinearizeDepth(float depth)
 void main()
 {             
     float depthValue = texture(depthMap, TexCoords).r;
+	// 非线性深度值转变为线性的,避免 透视投影  几乎全白的结果 (大多数可现实范围都位于近平面附近, 白色1.0远平面)
     // FragColor = vec4(vec3(LinearizeDepth(depthValue) / far_plane), 1.0); // perspective
     FragColor = vec4(vec3(depthValue), 1.0); // orthographic
 }
