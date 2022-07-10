@@ -16,7 +16,7 @@ enum Camera_Movement {
 };
 
 // Default camera values
-const float YAW         = -90.0f;
+const float YAW         = -90.0f; 
 const float PITCH       =  0.0f;
 const float SPEED       =  2.5f;
 const float SENSITIVITY =  0.1f;
@@ -34,8 +34,8 @@ public:
     glm::vec3 Right;
     glm::vec3 WorldUp; // 这个基本是固定的 不会调整
     // euler Angles
-    float Yaw;
-    float Pitch;
+    float Yaw;   // YAW         = -90.0f;  航向角  默认望向(0,0,-1)
+    float Pitch; //  PITCH       =  0.0f;   俯仰角
     // camera options
     float MovementSpeed;
     float MouseSensitivity;

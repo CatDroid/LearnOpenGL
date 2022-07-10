@@ -42,17 +42,23 @@ unsigned int planeVAO;
 bool fixFrontFaceShadowAcneEnabled = false;
 bool fixFrontFaceShadowAcneEnabledPressed = false;
 
+bool shaderShadowClampToBoder = false;
+bool shaderShadowClampToBoderPressed = false;
+
 void logHint()
 {
 	{
 
 		static bool sfixFrontFaceShadowAcneEnabled = fixFrontFaceShadowAcneEnabled;
+		static bool sshaderShadowClampToBoder = shaderShadowClampToBoder;
 		bool log = false;
 
-		if (sfixFrontFaceShadowAcneEnabled != fixFrontFaceShadowAcneEnabled)
+		if (sfixFrontFaceShadowAcneEnabled != fixFrontFaceShadowAcneEnabled
+			|| sshaderShadowClampToBoder != shaderShadowClampToBoder)
 		{
 
 			sfixFrontFaceShadowAcneEnabled = fixFrontFaceShadowAcneEnabled;
+			sshaderShadowClampToBoder = shaderShadowClampToBoder;
 
 			log = true;
 		}
@@ -72,24 +78,49 @@ void logHint()
 			std::cout << (fixFrontFaceShadowAcneEnabled ? "Enable Front Face Cull" : "Disable Front Face Cull ")
 				<< ", Press  B switch"
 				<< std::endl;
+
+			std::cout << (shaderShadowClampToBoder ? "Enable Shader's ClampToBoder" : "Disable Shader's ClampToBoder")
+				<< ", Press  N switch"
+				<< std::endl;
 		}
 	}
 }
 
 void processHint(GLFWwindow *window)
 {
-	if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS && !fixFrontFaceShadowAcneEnabledPressed)
 	{
-		fixFrontFaceShadowAcneEnabledPressed = true;
+		if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS && !fixFrontFaceShadowAcneEnabledPressed)
+		{
+			fixFrontFaceShadowAcneEnabledPressed = true;
 
-		fixFrontFaceShadowAcneEnabled = !fixFrontFaceShadowAcneEnabled;
+			fixFrontFaceShadowAcneEnabled = !fixFrontFaceShadowAcneEnabled;
 
+		}
+
+		if (glfwGetKey(window, GLFW_KEY_B) == GLFW_RELEASE)
+		{
+			fixFrontFaceShadowAcneEnabledPressed = false;
+		}
 	}
 
-	if (glfwGetKey(window, GLFW_KEY_B) == GLFW_RELEASE)
 	{
-		fixFrontFaceShadowAcneEnabledPressed = false;
+
+		if (glfwGetKey(window, GLFW_KEY_N) == GLFW_PRESS && !shaderShadowClampToBoderPressed)
+		{
+			shaderShadowClampToBoderPressed = true;
+
+			shaderShadowClampToBoder = !shaderShadowClampToBoder;
+
+		}
+
+		if (glfwGetKey(window, GLFW_KEY_N) == GLFW_RELEASE)
+		{
+			shaderShadowClampToBoderPressed = false;
+		}
 	}
+
+
+
 }
 
 int main()
@@ -184,10 +215,21 @@ int main()
     glGenTextures(1, &depthMap);
     glBindTexture(GL_TEXTURE_2D, depthMap);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // 这样不只是摩尔纹 还会闪烁 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,  GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); // 两种没啥区别
+
+	// OpenGL ES3.0 扩展  ES3.2 支持 只能解决x,y超出视椎体范围 -- 实际没有效果???
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+	//GLfloat borderColor[] = { 1.0, 1.0, 1.0, 1.0 };
+	//glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+
     // attach depth texture as FBO's depth buffer
     glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
@@ -204,7 +246,7 @@ int main()
     debugDepthQuad.use();
     debugDepthQuad.setInt("depthMap", 0);
 
-    // lighting info
+    // lighting info  摄像机在 0.0f, 0.0f, 3.0(望向0,0,-1)  光源在 -2.0f, 4.0f, -1.0(指向原点) 地板在 25.0f, -0.5f(固定),  25.0f
     // -------------
     glm::vec3 lightPos(-2.0f, 4.0f, -1.0f);
 
@@ -231,7 +273,45 @@ int main()
         // --------------------------------------------------------------
         glm::mat4 lightProjection, lightView;
         glm::mat4 lightSpaceMatrix;
-        float near_plane = 1.0f, far_plane = 7.5f;
+        
+		static float near_plane = 1.0f, far_plane = 7.5f;
+		static float delta = 0.002f;
+		far_plane = far_plane + delta;
+		if (far_plane > 10.0f || far_plane < 6.0f)
+		{
+			delta = -delta;
+		}
+		/* 
+		笔记: 
+			由于光源椎体的尺寸限制 超出的部分 ,都不是阴影  
+			不影响阴影 1. 被cull的物体  2.超出光源视椎体上下框(并且GL_REPEAT) 3.超出光源椎体远近平面
+			
+		笔记:
+			GL_CLAMP_TO_BORDER    OpenglES 3.2          支持 
+			CLAMP_TO_BORDER_OES  Opengl 3.0 OES扩展 支持
+
+			------------------
+			KHR 扩展  Khronos批准的扩展 (ARB, OES, or KHR vendor suffixed)
+			OES 扩展  很像桌面 GL 领域中的 ARB 扩展:它们是由负责维护 OpenGL ES 的 Khronos 小组编写的扩展
+			EXT 扩展  由一个或多个供应商编写 , 多个OpenGL厂商同意的扩展
+
+			NV  扩展          NVIDIA Corporation
+			SGI 扩展         Silicon Graphics 硅图 
+			ANDROID扩展  Android 提供的扩展
+
+			其中 ARB,OES,KHR,EXT 扩展大多可以跨平台，其他扩展大多都是平台相关的
+
+			可以查看android平台或者其他平台的扩展:
+			OpenGL扩展	https://www.khronos.org/registry/OpenGL/extensions/  
+						KHR_debug 
+						EXT_geometry_shader  
+						EXT_tessellation_shader
+						--- 3.1的扩展, 支持几何着色器
+						--- 在移动平台上, 几何着色器需要OpenGL ES 3.2版本（android 7之上）
+						
+			EGL扩展			 https://www.khronos.org/registry/EGL/extensions/
+		*/
+			
         lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
         lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
         lightSpaceMatrix = lightProjection * lightView;
@@ -277,7 +357,7 @@ int main()
 			//glFrontFace(GL_CCW); 
 			glCullFace(GL_FRONT);
 		}
-		
+
 
         glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
         glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
@@ -315,6 +395,17 @@ int main()
         glBindTexture(GL_TEXTURE_2D, woodTexture);
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, depthMap);
+
+		if (shaderShadowClampToBoder)
+		{
+			shader.setBool("clampToBoder", true); // 内部都是用 glUniform1i
+			//shader.setInt("clampToBoder", 1); 
+		}
+		else
+		{
+			shader.setBool("clampToBoder", false);
+		}
+
         renderScene(shader);
 
         // render Depth map to quad for visual debugging

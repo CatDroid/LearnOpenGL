@@ -13,15 +13,36 @@ uniform sampler2D shadowMap;
 
 uniform vec3 lightPos;
 uniform vec3 viewPos;
+uniform bool  clampToBoder;
 
 float ShadowCalculation(vec4 fragPosLightSpace, vec3 worldNormal, vec3 worldLightDir)
 {
+	if (clampToBoder)
+	{
+		/*
+			采集阴影的(接收阴影)物体都要对纹理做判断, 比纹理设置WRAP为CLAMP_TO_BODER要麻烦
+		*/
+		float w = fragPosLightSpace.w;
+		float nw = -fragPosLightSpace.w;
+		if (    fragPosLightSpace.x >  w
+		    || fragPosLightSpace.x < nw
+		    || fragPosLightSpace.y >   w 
+			|| fragPosLightSpace.y < nw
+			|| fragPosLightSpace.z >   w 
+			|| fragPosLightSpace.z < nw
+			)
+		{
+			// 在光照椎体之外 都不是阴影
+			return 0.0;
+		}
+	}
+
     // perform perspective divide ps阶段才做透视除法
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     
 	// transform to [0,1] range  注意这里把深度从1~-1 也转换到了 1~0 
     projCoords = projCoords * 0.5 + 0.5;
-    
+
 	// get closest depth value from light's perspective (using [0,1] range fragPosLight as coords)
     float closestDepth = texture(shadowMap, projCoords.xy).r;  // 只要r分量
     
