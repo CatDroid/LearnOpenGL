@@ -89,12 +89,15 @@ int main()
     // -------------
     unsigned int woodTexture = loadTexture(FileSystem::getPath("resources/textures/wood.png").c_str());
 
+
     // configure depth map FBO
     // -----------------------
     const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
     unsigned int depthMapFBO;
     glGenFramebuffers(1, &depthMapFBO);
-    // create depth cubemap texture
+
+
+    // create depth cubemap texture 深度立方体纹理(目标是cubemap 数据是depth)
     unsigned int depthCubemap;
     glGenTextures(1, &depthCubemap);
     glBindTexture(GL_TEXTURE_CUBE_MAP, depthCubemap);
@@ -105,10 +108,12 @@ int main()
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-    // attach depth texture as FBO's depth buffer
+   
+
+	// attach depth texture as FBO's depth buffer
     glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
     glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthCubemap, 0);
-    glDrawBuffer(GL_NONE);
+    glDrawBuffer(GL_NONE); // 设置这个fbo的读写buffer为NONE, 一般可以是 GL_COLOR_ATTACEMENT[i] GL_BACK等
     glReadBuffer(GL_NONE);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -148,9 +153,11 @@ int main()
         // 0. create depth cubemap transformation matrices
         // -----------------------------------------------
         float near_plane = 1.0f;
-        float far_plane  = 25.0f;
+        float far_plane  = 25.0f;  
+		// 光源空间的 透视矩阵都是同样的(远近 fov radius一样）
         glm::mat4 shadowProj = glm::perspective(glm::radians(90.0f), (float)SHADOW_WIDTH / (float)SHADOW_HEIGHT, near_plane, far_plane);
         std::vector<glm::mat4> shadowTransforms;
+		// glm::lookAt(位置, 目标方向, 垂直方向)  1.0f,  0.0f,  0.0f --望向x正轴   0.0f, -1.0f,  0.0f --up是y轴负--倒过来了??
         shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3( 1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)));
         shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)));
         shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3( 0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f,  1.0f)));
@@ -205,7 +212,8 @@ int main()
 // --------------------
 void renderScene(const Shader &shader)
 {
-    // room cube
+
+    // room cube 这个cube要渲染里面, 所以要1.关闭背面裁剪(??修改成正面裁剪??) 2.顶点法线取反
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::scale(model, glm::vec3(5.0f));
     shader.setMat4("model", model);
@@ -214,6 +222,8 @@ void renderScene(const Shader &shader)
     renderCube();
     shader.setInt("reverse_normals", 0); // and of course disable it
     glEnable(GL_CULL_FACE);
+
+
     // cubes
     model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(4.0f, -3.5f, 0.0));
