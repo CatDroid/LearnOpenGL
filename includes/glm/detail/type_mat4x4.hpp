@@ -20,6 +20,8 @@ namespace glm
 
 	private:
 		col_type value[4];
+        // 每个成员是个vec4 代表一列  mat4x4[col][]  col是访问value[col]
+        // 参看 operator[] 重写的实现   this->value[i];
 
 	public:
 		// -- Accesses --
@@ -36,7 +38,7 @@ namespace glm
 		template<qualifier P>
 		GLM_FUNC_DECL GLM_CONSTEXPR mat(mat<4, 4, T, P> const& m);
 
-		GLM_FUNC_DECL explicit GLM_CONSTEXPR mat(T const& x);
+		GLM_FUNC_DECL explicit GLM_CONSTEXPR mat(T const& x); // x是对角线线上的值
 		GLM_FUNC_DECL GLM_CONSTEXPR mat(
 			T const& x0, T const& y0, T const& z0, T const& w0,
 			T const& x1, T const& y1, T const& z1, T const& w1,

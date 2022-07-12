@@ -98,23 +98,39 @@ namespace glm
 	template<typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER mat<4, 4, T, Q> lookAtRH(vec<3, T, Q> const& eye, vec<3, T, Q> const& center, vec<3, T, Q> const& up)
 	{
-		vec<3, T, Q> const f(normalize(center - eye));
-		vec<3, T, Q> const s(normalize(cross(f, up)));
-		vec<3, T, Q> const u(cross(s, f));
+		vec<3, T, Q> const f(normalize(center - eye));  // forward 看向的方向 (传入的时候是 postion+Front了)
+		vec<3, T, Q> const s(normalize(cross(f, up)));  // right向量
+		vec<3, T, Q> const u(cross(s, f));              // 新的up向量
+        
+        /*
+            这里得到是左手坐标系
+       u(up,y)  f(forward,z)
+            |  /
+            | /
+            |/____ s(right,x)
+            
+         */
 
-		mat<4, 4, T, Q> Result(1);
+        // Opengl是列主
+        // Result 并不是二维数组, 而是一个struct里面包含了4个vec, 每个vec代表一列
+        // Result[0] 调用的是 mat::operator[] 返回内部的4个vec的第0个, 也就是第0列
+		mat<4, 4, T, Q> Result(1); // 1是对角线线上的值 也就是默认初始化为单位矩阵
 		Result[0][0] = s.x;
 		Result[1][0] = s.y;
 		Result[2][0] = s.z;
-		Result[0][1] = u.x;
+        
+		Result[0][1] = u.x; // 因为View矩阵是正交矩阵 逆矩阵就是转置, 这里第一列是 [0][0] = s.x [0][1] = u.x [0][2] =-f.x是做了转置
 		Result[1][1] = u.y;
 		Result[2][1] = u.z;
-		Result[0][2] =-f.x;
+        
+		Result[0][2] =-f.x; // RH右手的话,会把z轴 目标方向 相反了
 		Result[1][2] =-f.y;
 		Result[2][2] =-f.z;
+        
 		Result[3][0] =-dot(s, eye);
 		Result[3][1] =-dot(u, eye);
 		Result[3][2] = dot(f, eye);
+        
 		return Result;
 	}
 
