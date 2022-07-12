@@ -127,10 +127,28 @@ namespace glm
 		Result[1][2] =-f.y;
 		Result[2][2] =-f.z;
         
-		Result[3][0] =-dot(s, eye);
-		Result[3][1] =-dot(u, eye);
-		Result[3][2] = dot(f, eye);
-        
+		Result[3][0] =-dot(s, eye); 
+		Result[3][1] =-dot(u, eye);  
+		Result[3][2] = dot(f, eye); 
+        /*
+			从世界到视图坐标系位移是eye  但是从视图坐标系到世界, 就不是-eye了
+
+			世界坐标系描述视图坐标轴是 [s, u, f]
+			由于这个是正交矩阵, 所以  视图坐标系描述 世界坐标轴是就 转置 
+			[ s
+			  u
+			  f ]
+
+			-eye 这个向量 在 视图坐标系中 的坐标就是 
+
+			[ s
+			  u
+			  f]  * (-eye)   =   { s*(-eye), u*(-eye), f*(-eye) }
+
+			-----
+			在一个坐标系A到另外一个坐标系B, 是位移了向量delta, 反过来就不是位移了向量delta了
+			因为这个位移delta向量，是参考坐标系A的; 从坐标系B到坐标系A, 位移向量就要改成参考坐标系B了
+		*/
 		return Result;
 	}
 
