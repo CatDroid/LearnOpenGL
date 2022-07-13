@@ -112,6 +112,15 @@ int main()
 
 	// attach depth texture as FBO's depth buffer
     glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+	// !! 注意这里用的不是 glFramebufferTexture2D 
+	//    glFramebufferTexture - OpenGL ES 3.2 
+	//    区别 
+	//    glFramebufferTexture attaches all cube map faces of a specific MIP level as an array of images
+	//                                   (layered framebuffer), 
+	//                                   纹理的给定level的所有cubemap面都会附着!!  为一个图片数组 
+	//    glFramebufferTexture2D only attaches a single face of a specific MIP level.
+	//                                  纹理的给定level的cubemap的单独一个面!!
+
     glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthCubemap, 0);
     glDrawBuffer(GL_NONE); // 设置这个fbo的读写buffer为NONE, 一般可以是 GL_COLOR_ATTACEMENT[i] GL_BACK等
     glReadBuffer(GL_NONE);
