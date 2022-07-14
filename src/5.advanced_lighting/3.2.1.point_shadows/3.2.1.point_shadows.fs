@@ -18,10 +18,11 @@ uniform bool shadows;
 
 float ShadowCalculation(vec3 fragPos)
 {
-	// 方向向量不需要是单位向量
+    // 从光源指向表面点(世界坐标系)
     // get vector between fragment position and light position
     vec3 fragToLight = fragPos - lightPos;
 
+	// 立方体贴图进行采样 的 方向向量不需要是单位向量，所以无需对它进行标准化
     // ise the fragment to light vector to sample from the depth map    
     float closestDepth = texture(depthMap, fragToLight).r;
 

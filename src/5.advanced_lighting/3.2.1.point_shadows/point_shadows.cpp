@@ -78,7 +78,7 @@ int main()
     // configure global opengl state
     // -----------------------------
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
+    glEnable(GL_CULL_FACE); // 这里渲染阴影的时候 没有使用正面剔除 来解决阴影失真和悬浮问题
 
     // build and compile shaders
     // -------------------------
@@ -182,7 +182,7 @@ int main()
         // --------------------------------
         glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
         glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
-            glClear(GL_DEPTH_BUFFER_BIT);
+            glClear(GL_DEPTH_BUFFER_BIT);  // 只需要清除depth buffer
             simpleDepthShader.use();
             for (unsigned int i = 0; i < 6; ++i)
                 simpleDepthShader.setMat4("shadowMatrices[" + std::to_string(i) + "]", shadowTransforms[i]);

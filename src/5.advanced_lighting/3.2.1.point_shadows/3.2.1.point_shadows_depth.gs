@@ -17,6 +17,7 @@ void main()
 		//                  只有当我们有了一个附加到 激活的帧缓冲 的 立方体贴图纹理才有效
 		//                  当不管它时，几何着色器就会像往常一样, 把它的基本图形发送到输送管道的下一阶段
 		//                  整数
+		//	指定输出面
         gl_Layer = face;				// built-in variable that specifies to which face we render.
         
 		// 物体的每个图元是个三角形, 每次gs传入三个顶点, 然后生成3*6个顶点 分别在6个点光源方向上
