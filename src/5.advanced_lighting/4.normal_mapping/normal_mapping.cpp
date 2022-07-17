@@ -80,7 +80,7 @@ int main()
     // -------------------------
     Shader shader("4.normal_mapping.vs", "4.normal_mapping.fs");
 
-    // load textures
+    // load textures 注意没有设置 stbi 垂直镜像
     // -------------
     unsigned int diffuseMap = loadTexture(FileSystem::getPath("resources/textures/brickwall.jpg").c_str());
     unsigned int normalMap  = loadTexture(FileSystem::getPath("resources/textures/brickwall_normal.jpg").c_str());
@@ -132,9 +132,10 @@ int main()
         glBindTexture(GL_TEXTURE_2D, normalMap);
         renderQuad();
 
+		// 在光源位置  姿态固定(平躺着)
         // render light source (simply re-renders a smaller plane at the light's position for debugging/visualization)
         model = glm::mat4(1.0f);
-        model = glm::translate(model, lightPos);
+        model = glm::translate(model, lightPos); 
         model = glm::scale(model, glm::vec3(0.1f));
         shader.setMat4("model", model);
         renderQuad();
@@ -155,23 +156,88 @@ unsigned int quadVAO = 0;
 unsigned int quadVBO;
 void renderQuad()
 {
+	/* 
+	Assimp的使用:
+
+		切线:
+			const aiScene* scene = importer.ReadFile
+				(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace );
+			aiProcess_CalcTangentSpace  Assimp会为每个加载的顶点计算出柔和的切线和副切线向量
+
+			vector.x = mesh->mTangents[i].x;
+			vector.y = mesh->mTangents[i].y;
+			vector.z = mesh->mTangents[i].z;
+			vertex.Tangent = vector;
+
+		法线贴图:
+			wavefront的模型格式（.obj）导出的法线贴图有点不一样，
+			Assimp的aiTextureType_NORMAL并不会加载它的法线贴图, 而aiTextureType_HEIGHT却能
+			当然，对于每个模型的类型和文件格式来说都是不同的。
+			vector<Texture> specularMaps = 
+				this->loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
+
+    */
+
     if (quadVAO == 0)
     {
         // positions
-        glm::vec3 pos1(-1.0f,  1.0f, 0.0f);
+        glm::vec3 pos1(-1.0f,  1.0f, 0.0f);	// 模型在XOY平面  就是竖着朝向镜头
         glm::vec3 pos2(-1.0f, -1.0f, 0.0f);
         glm::vec3 pos3( 1.0f, -1.0f, 0.0f);
         glm::vec3 pos4( 1.0f,  1.0f, 0.0f);
         // texture coordinates
-        glm::vec2 uv1(0.0f, 1.0f);
+        glm::vec2 uv1(0.0f, 1.0f);				// 左下角的顶点 对应 纹理的原点(左下角)
         glm::vec2 uv2(0.0f, 0.0f);
         glm::vec2 uv3(1.0f, 0.0f);  
         glm::vec2 uv4(1.0f, 1.0f);
         // normal vector
-        glm::vec3 nm(0.0f, 0.0f, 1.0f);
+        glm::vec3 nm(0.0f, 0.0f, 1.0f);		// 模型坐标系下的法线 这里6个的顶点都一样
+
+		// 每个表面都是一个三角形"平面"  
+		// 三角形"平面" 可认为是切线和法线所在平面  TOB平面
+		//
+		// 法线贴图的切线和副切线与纹理坐标的两个方向对齐
+		//
+		// 在这个平面内,  该三角形纹理的方向(纹理坐标增长的方向), 跟T和B轴正方向一样
+		
+		// 拆解公式:
+		// E = deltaU * T+ delatV * B
+		//      = (U1 - U2) * T  +(V1 - V2)* B
+		//      = (U1*T +V1*B) - (U2*T +V2*B) 
+		//      = P1 - P2 
+		//  P1 = (U1*T +V1*B)  = {T, B}(U1,V1)    ---U1和V1是个标量 (U1,V1)是纹理坐标系中的向量
+		//  P2 = (U2*T +V2*B)                              ---T和B向量相当于在模型坐标系描述纹理坐标系的两个轴
+
+		//  该公式描述的数学意义是，如何将一个点从uv空间映射到三维空间
+		//  假设三角形中存在一点P，则向量OP=u（p）*T+v（p）*B，
+		//  只要知道P点的uv坐标值，即可得到P点的三维坐标值
+		//  也就是(U1,V1),(U2,V2)从纹理坐标系 转换到模型坐标系 
+		//  现在相当于
+		//      知道了 (U1,V1),(U2,V2),(U3,V3) 纹理坐标系中的位置, 
+		//  同时也
+		//       知道了模型坐标系中的位置P1 P2 P3 
+		//  然后求T和B轴的坐标  
+		// ?? 这样算出来的T和B轴是垂直的?? 讨论记录在 https://zhuanlan.zhihu.com/p/139593847
+
+		// 
+		//  注意(U,V)是二维坐标, 
+		//      两个点所构成的方程组, 虽然有6个方程(6个参数) 
+		//      但简单画图可以知道,  这两个点不能固定T轴和B轴在三维空间的位置(可以旋转起来)
+		//      所以得到解析解,需要3个点   
+
+		//  共享顶点 
+		//		非共享情况: 
+		//			只需为每个三角形计算一个切线/副切线，它们对于每个三角形上的顶点都是一样 
+		//		共享情况:
+		//			要注意的是大多数实现通常三角形和三角形之间都会共享顶点。
+		//			!!! 这种情况下开发者通常将每个顶点的 ""法线和切线/副切线""等 ""顶点属性"" 平均化，
+		//			以获得更加柔和的效果 (??这种情况?? 法线和切线都会做平均? 平均之后就不能相互垂直)
+		//			!!! 这样切线就不一定跟法线垂直了, 需要做施密特正交化
+		// 
+
 
         // calculate tangent/bitangent vectors of both triangles
-        glm::vec3 tangent1, bitangent1;
+        glm::vec3 tangent1, bitangent1;  // 第一个三角形平面 
         glm::vec3 tangent2, bitangent2;
         // triangle 1
         // ----------
@@ -180,15 +246,18 @@ void renderQuad()
         glm::vec2 deltaUV1 = uv2 - uv1;
         glm::vec2 deltaUV2 = uv3 - uv1;
 
+		// 逆矩阵 = 1/行列式 * 伴随矩阵 
         float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
 
         tangent1.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
         tangent1.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
         tangent1.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+		// tangent1 = glm::normalize(tangent1);
 
         bitangent1.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
         bitangent1.y = f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
         bitangent1.z = f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
+		// bitangent1 = glm::normalize(bitangent1);  
 
         // triangle 2
         // ----------
@@ -202,19 +271,19 @@ void renderQuad()
         tangent2.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
         tangent2.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
         tangent2.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
-
+		
 
         bitangent2.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
         bitangent2.y = f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
         bitangent2.z = f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
 
-
+		// 顶点坐标(模型坐标系), 法线, 纹理坐标, 切线, 副切线(模型坐标系)
         float quadVertices[] = {
             // positions            // normal         // texcoords  // tangent                          // bitangent
             pos1.x, pos1.y, pos1.z, nm.x, nm.y, nm.z, uv1.x, uv1.y, tangent1.x, tangent1.y, tangent1.z, bitangent1.x, bitangent1.y, bitangent1.z,
             pos2.x, pos2.y, pos2.z, nm.x, nm.y, nm.z, uv2.x, uv2.y, tangent1.x, tangent1.y, tangent1.z, bitangent1.x, bitangent1.y, bitangent1.z,
             pos3.x, pos3.y, pos3.z, nm.x, nm.y, nm.z, uv3.x, uv3.y, tangent1.x, tangent1.y, tangent1.z, bitangent1.x, bitangent1.y, bitangent1.z,
-
+			// 两个三角形, 这里没有用共享顶点, 法线和切线没有做平均
             pos1.x, pos1.y, pos1.z, nm.x, nm.y, nm.z, uv1.x, uv1.y, tangent2.x, tangent2.y, tangent2.z, bitangent2.x, bitangent2.y, bitangent2.z,
             pos3.x, pos3.y, pos3.z, nm.x, nm.y, nm.z, uv3.x, uv3.y, tangent2.x, tangent2.y, tangent2.z, bitangent2.x, bitangent2.y, bitangent2.z,
             pos4.x, pos4.y, pos4.z, nm.x, nm.y, nm.z, uv4.x, uv4.y, tangent2.x, tangent2.y, tangent2.z, bitangent2.x, bitangent2.y, bitangent2.z
