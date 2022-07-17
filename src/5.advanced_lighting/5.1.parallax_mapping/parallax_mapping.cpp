@@ -24,6 +24,9 @@ void renderQuad();
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 float heightScale = 0.1f;
+bool bSpaceKeyPress = false;
+bool bAutoRotate = true;
+float fRotateAngle = 0;
 
 // camera
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
@@ -128,11 +131,27 @@ int main()
         shader.setMat4("view", view);
         // render parallax-mapped quad
         glm::mat4 model = glm::mat4(1.0f);
-        model = glm::rotate(model, glm::radians((float)glfwGetTime() * -10.0f), glm::normalize(glm::vec3(1.0, 0.0, 1.0))); // rotate the quad to show parallax mapping from multiple directions
-        shader.setMat4("model", model);
+
+		if (bAutoRotate)
+		{
+			fRotateAngle += 0.05;
+		}
+		else
+		{
+			//fRotateAngle ;
+		}
+		
+
+        model = glm::rotate(model, 
+										glm::radians(fRotateAngle), // 帧率大可能转的快, 需要自己调整
+										//glm::radians((float)glfwGetTime() * -10.0f),  // 不受帧率影响 
+										glm::normalize(glm::vec3(1.0, 0.0, 1.0))); 
+		// rotate the quad to show parallax mapping from multiple directions
+	
+		shader.setMat4("model", model);
         shader.setVec3("viewPos", camera.Position);
         shader.setVec3("lightPos", lightPos);
-        shader.setFloat("heightScale", heightScale); // adjust with Q and E keys
+        shader.setFloat("heightScale", heightScale); // Q和E按键调整高度scale
         std::cout << heightScale << std::endl;
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, diffuseMap);
@@ -142,6 +161,7 @@ int main()
         glBindTexture(GL_TEXTURE_2D, heightMap);
         renderQuad();
 
+		// 显示光源的位置 
         // render light source (simply re-renders a smaller plane at the light's position for debugging/visualization)
         model = glm::mat4(1.0f);
         model = glm::translate(model, lightPos);
@@ -285,6 +305,17 @@ void processInput(GLFWwindow *window)
         else 
             heightScale = 1.0f;
     }
+
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && ! bSpaceKeyPress )
+	{
+		bSpaceKeyPress = true; 
+		bAutoRotate = !bAutoRotate;
+	}
+
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_RELEASE  )
+	{
+		bSpaceKeyPress = false;
+	}
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
