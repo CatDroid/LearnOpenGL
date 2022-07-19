@@ -86,9 +86,14 @@ int main()
 
     // load textures
     // -------------
-    unsigned int diffuseMap = loadTexture(FileSystem::getPath("resources/textures/bricks2.jpg").c_str());
-    unsigned int normalMap  = loadTexture(FileSystem::getPath("resources/textures/bricks2_normal.jpg").c_str());
-    unsigned int heightMap  = loadTexture(FileSystem::getPath("resources/textures/bricks2_disp.jpg").c_str());
+    unsigned int diffuseMap = loadTexture(
+		FileSystem::getPath("resources/textures/bricks2.jpg").c_str());
+    unsigned int normalMap  = loadTexture(
+		FileSystem::getPath("resources/textures/bricks2_normal.jpg").c_str());
+	// 高度(深度)图
+    unsigned int heightMap  = loadTexture(
+		FileSystem::getPath("resources/textures/bricks2_disp.jpg").c_str());
+
    /* unsigned int diffuseMap = loadTexture(FileSystem::getPath("resources/textures/toy_box_diffuse.png").c_str());
     unsigned int normalMap = loadTexture(FileSystem::getPath("resources/textures/toy_box_normal.png").c_str());
     unsigned int heightMap = loadTexture(FileSystem::getPath("resources/textures/toy_box_disp.png").c_str());*/
@@ -132,6 +137,7 @@ int main()
         // render parallax-mapped quad
         glm::mat4 model = glm::mat4(1.0f);
 
+		// rotate the quad to show parallax mapping from multiple directions
 		if (bAutoRotate)
 		{
 			fRotateAngle += 0.05;
@@ -141,13 +147,21 @@ int main()
 			//fRotateAngle ;
 		}
 		
-
+#if 1
         model = glm::rotate(model, 
 										glm::radians(fRotateAngle), // 帧率大可能转的快, 需要自己调整
 										//glm::radians((float)glfwGetTime() * -10.0f),  // 不受帧率影响 
 										glm::normalize(glm::vec3(1.0, 0.0, 1.0))); 
-		// rotate the quad to show parallax mapping from multiple directions
-	
+		
+#else 
+		// 这个角度上如果heightScale超过0.5就会出现明显错误效果了
+		// heightScale小一点 可以看到砖头挡住另外一个砖头的效果(不会看到中间的缝隙)
+		model = glm::rotate(model,
+			glm::radians(80.0f),
+			glm::normalize(glm::vec3(0.0, 1.0, 0.0)));
+#endif 
+
+
 		shader.setMat4("model", model);
         shader.setVec3("viewPos", camera.Position);
         shader.setVec3("lightPos", lightPos);

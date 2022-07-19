@@ -27,14 +27,26 @@ vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir)
 	//     所以，从本质上，相比正朝向表面，当带有角度地看向平面时，我们会更大程度地缩放P的大小，从而增加纹理坐标的偏移；
 	//     这样做在视角上会获得更大的真实度。
 
-	// 不除以viewDir.z --- 有偏移量限制的视差贴图（Parallax Mapping with Offset Limiting）
-	// 
+	//  有偏移量限制的视差贴图（Parallax Mapping with Offset Limiting）
+	//  ---不除以viewDir.z
+	//  普通视差贴图
+	//  ---除以viewDir.z,  heightScale不能太大 否则超过1了
     float height =  texture(depthMap, texCoords).r;     
-    return texCoords - viewDir.xy * (height * heightScale);        
+    return texCoords - viewDir.xy * (height * heightScale);     // viewDir.xy/viewDir.z     
 }
 
 void main()
 {           
+
+	/*
+		转换到切线空间(纹理空间) 
+			1. 当表面被任意旋转以后很难指出从P获取哪一个坐标
+			2. "由于切线和双切线向量与表面的纹理坐标指向相同的方向"，
+				我们可以将 向量P 的 x 和 y 分量作为纹理坐标偏移量，而不管表面的方向。
+			3. 边缘上，纹理坐标超出了0到1的范围进行采样，
+			    根据纹理的环绕方式导致了不真实的结果, 所以丢弃
+
+	*/
     // offset texture coordinates with Parallax Mapping
     vec3 viewDir = normalize(fs_in.TangentViewPos - fs_in.TangentFragPos);
     vec2 texCoords = fs_in.TexCoords;

@@ -30,6 +30,7 @@ void main()
     vec3 N = normalize(mat3(model) * aNormal);
     mat3 TBN = transpose(mat3(T, B, N));
 
+	// 注意！ 这里的TBN没有正交化 ??  所以T和B都是沿着UV轴正方向, 但有可能不垂直
     vs_out.TangentLightPos = TBN * lightPos;
     vs_out.TangentViewPos  = TBN * viewPos;
     vs_out.TangentFragPos  = TBN * vs_out.FragPos;
