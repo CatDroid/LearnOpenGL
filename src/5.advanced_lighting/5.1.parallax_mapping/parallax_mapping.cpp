@@ -166,7 +166,14 @@ int main()
         shader.setVec3("viewPos", camera.Position);
         shader.setVec3("lightPos", lightPos);
         shader.setFloat("heightScale", heightScale); // Q和E按键调整高度scale
-        std::cout << heightScale << std::endl;
+		static float sheightScale = 0;
+		if (sheightScale != heightScale)
+		{
+			sheightScale = heightScale;
+			std::cout << "heightScale change to: "<< heightScale << std::endl;
+		}
+
+       
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, diffuseMap);
         glActiveTexture(GL_TEXTURE1);

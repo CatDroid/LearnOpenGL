@@ -31,7 +31,9 @@ vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir)
 	//  ---不除以viewDir.z
 	//  普通视差贴图
 	//  ---除以viewDir.z,  heightScale不能太大 否则超过1了
-    float height =  texture(depthMap, texCoords).r;     
+    float height =  texture(depthMap, texCoords).r;  
+	
+	// 因为使用深度图 viewDir的方向和P是相反的, 所以是 "减"
     return texCoords - viewDir.xy * (height * heightScale);     // viewDir.xy/viewDir.z     
 }
 
