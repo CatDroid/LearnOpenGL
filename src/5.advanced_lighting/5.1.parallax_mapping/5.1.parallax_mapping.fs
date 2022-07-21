@@ -14,10 +14,29 @@ uniform sampler2D normalMap;
 uniform sampler2D depthMap;
 
 uniform float heightScale;
+uniform bool disableHeightMap; // 不使用视差纹理, 看下整体偏移的效果
 
 vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir)
 { 
- 
+	/* 视差: 
+			视差parallax是指从"两个不同位置"观察"同一个物体"时，此物体在视野中的位置变化与"差异"
+			比如望向一个砖头墙面, 浅视角应该看到砖头和砖头挨着，高视角看就会看到砖头间的缝隙
+	
+			视差是由相对于观察者的"透视投影"引起的。 
+			所以我们必须牢记这一点来移动纹理坐标。 
+			这意味着我们必须根据视图方向移动坐标，这对于每个片段都是不同的。
+
+			两篇文章 视差贴图 
+			https://catlikecoding.com/unity/tutorials/rendering/part-20/
+			https://zhuanlan.zhihu.com/p/309620273 
+
+			hhl:理解 表面贴图,有点像是正交相交拍出来的,
+			                        或者说在每一处上方拍出来,
+									而不是透视相机拍出来一张照片
+									所以在渲染的时候,使用透视相机,而又不在表面点的正上方时候,
+									就不应该直接采样表面点的当前纹理了
+	*/ 
+	//
 	// 1. 即使是表面的同一点（采样的都是高度都是H(A)）,但是因为视角的不一样，
 	//     viewDir.xy/viewDIr.z * height 得到的偏移就不一样
 	//
@@ -31,10 +50,21 @@ vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir)
 	//  ---不除以viewDir.z
 	//  普通视差贴图
 	//  ---除以viewDir.z,  heightScale不能太大 否则超过1了
+	//		这会导致更正确的投影??，但它确实会恶化我们对浅视角的视差效应的伪影
+	//		添加 0.42 的偏差来缓解这种情况，不会接近零
+	//		viewDir.xy /= (viewDir.z + 0.42); 
     float height =  texture(depthMap, texCoords).r;  
+	if (disableHeightMap) 
+	{
+		height = 1.0; 
+	}
+
+	
 	
 	// 因为使用深度图 viewDir的方向和P是相反的, 所以是 "减"
     return texCoords - viewDir.xy * (height * heightScale);     // viewDir.xy/viewDir.z     
+	
+	
 }
 
 void main()

@@ -27,6 +27,7 @@ float heightScale = 0.1f;
 bool bSpaceKeyPress = false;
 bool bAutoRotate = true;
 float fRotateAngle = 0;
+bool bDisableHeightMap = false;
 
 // camera
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
@@ -170,9 +171,15 @@ int main()
 		if (sheightScale != heightScale)
 		{
 			sheightScale = heightScale;
-			std::cout << "heightScale change to: "<< heightScale << std::endl;
+			std::cout << "(Q)(E)heightScale change to: "<< heightScale << std::endl;
 		}
-
+		shader.setBool("disableHeightMap", bDisableHeightMap);
+		static float sDisableHeightMap = !bDisableHeightMap;
+		if (sDisableHeightMap != bDisableHeightMap)
+		{
+			sDisableHeightMap = bDisableHeightMap;
+			std::cout << "(B)DisableHeightMap change to: " << bDisableHeightMap << std::endl;
+		}
        
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, diffuseMap);
@@ -336,6 +343,18 @@ void processInput(GLFWwindow *window)
 	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_RELEASE  )
 	{
 		bSpaceKeyPress = false;
+	}
+
+	static bool bDisableHeightMapPress = false;
+	if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS && !bDisableHeightMapPress)
+	{
+		bDisableHeightMapPress = true;
+		bDisableHeightMap = !bDisableHeightMap;
+	}
+
+	if (glfwGetKey(window, GLFW_KEY_B) == GLFW_RELEASE)
+	{
+		bDisableHeightMapPress = false;
 	}
 }
 

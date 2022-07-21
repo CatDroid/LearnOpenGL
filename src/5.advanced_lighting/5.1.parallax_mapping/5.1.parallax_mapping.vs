@@ -34,6 +34,19 @@ void main()
     vs_out.TangentLightPos = TBN * lightPos;
     vs_out.TangentViewPos  = TBN * viewPos;
     vs_out.TangentFragPos  = TBN * vs_out.FragPos;
-    
+
+	/*
+	纹理坐标存在于切线空间中。 
+	要调整这些坐标，我们还需要知道切线空间中的视图方向。
+
+	视图方向定义为从表面到相机的向量，标准化。
+
+	我们可以将矩阵传递给片段程序并在那里使用它，但这会变得昂贵。
+
+	我们可以在顶点程序中确定这个向量，在那里对其进行转换，然后将其传递给片段程序。 
+	如果我们将归一化推迟到插值之后，我们最终会得到正确的方向。
+	
+	这样, 只需要添加切线空间的视图方向作为"新的插值器varying, new interpolator"。
+	*/    
     gl_Position = projection * view * model * vec4(aPos, 1.0);
 }
