@@ -35,6 +35,8 @@ vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir)
 									而不是透视相机拍出来一张照片
 									所以在渲染的时候,使用透视相机,而又不在表面点的正上方时候,
 									就不应该直接采样表面点的当前纹理了
+            由于视差是由相对于观察者的透视投影引起的, 所以移动纹理坐标要根据视图方向，因此要在片段着色器上执行
+            如果使用深度图 那么倾向会看到更大范围的纹理; 如果是高度图 那么倾向会看到更少范围的纹理
 	*/ 
 	//
 	// 1. 即使是表面的同一点（采样的都是高度都是H(A)）,但是因为视角的不一样，
@@ -56,7 +58,11 @@ vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir)
     float height =  texture(depthMap, texCoords).r;  
 	if (disableHeightMap) 
 	{
-		height = 1.0; 
+		height = 1.0;
+        // 固定之后，会发现heightScale增加 近处变化比远的大\
+        // --- 可以画图 视椎体 斜着看平面 远处的虽然变化比较大(因为viewDir.xy比较大),
+        //     但由于投影在近平面比较小,所以感觉移动不大,然而对比一下表面同样的两个点上的纹理,
+        //     会发现heightScale=0(不变化)和heigScale为某值时候,远处的已经移动了一个砖头,但是近处的还没有›
 	}
 
 	
