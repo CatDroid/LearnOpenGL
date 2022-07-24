@@ -97,6 +97,18 @@ int main()
     unsigned int colorBuffer;
     glGenTextures(1, &colorBuffer);
     glBindTexture(GL_TEXTURE_2D, colorBuffer);
+
+	// 
+	// 浮点纹理(floating-point framebuffers) 而不是 
+	// 定点纹理(fixed-point color format (like GL_RGB)) 
+	// 只需要修改内部格式为   GL_RGB16F, GL_RGBA16F, GL_RGB32F, or GL_RGBA32F
+	// format和datatype 是 GL_RGBA 和 GL_FLOAT(改成float? GL_UNSIGNED_BYTE)
+	//
+	// OpenGL 的默认帧缓冲区(默认情况下)每个颜色分量只占用 8 位
+	// 使用每个颜色分量 32 位的浮点帧缓冲区(使用 GL_RGB32F 或 GL_RGBA32F 时)
+	// 我们使用 4 倍的内存来存储颜色值
+	// 由于 32 位并不是真正需要的(除非您需要高精度)，因此使用 GL_RGBA16F 就足够了
+
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -123,7 +135,7 @@ int main()
     lightPositions.push_back(glm::vec3( 0.8f, -1.7f, 6.0f));
     // colors
     std::vector<glm::vec3> lightColors;
-    lightColors.push_back(glm::vec3(200.0f, 200.0f, 200.0f));
+    lightColors.push_back(glm::vec3(200.0f, 200.0f, 200.0f)); // 模拟太阳 比手电筒更好的亮度
     lightColors.push_back(glm::vec3(0.1f, 0.0f, 0.0f));
     lightColors.push_back(glm::vec3(0.0f, 0.0f, 0.2f));
     lightColors.push_back(glm::vec3(0.0f, 0.1f, 0.0f));
@@ -165,7 +177,7 @@ int main()
             shader.setMat4("view", view);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, woodTexture);
-            // set lighting uniforms
+            // set lighting uniforms 多个光源
             for (unsigned int i = 0; i < lightPositions.size(); i++)
             {
                 shader.setVec3("lights[" + std::to_string(i) + "].Position", lightPositions[i]);
@@ -181,6 +193,8 @@ int main()
             renderCube();
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+		// Tone Mapping 色调映射--- HDR渲染的最后一步
+		// 浮点纹理   不会自动的从线性转换到SRGB??? 
         // 2. now render floating point color buffer to 2D quad and tonemap HDR colors to default framebuffer's (clamped) color range
         // --------------------------------------------------------------------------------------------------------------------------
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -191,8 +205,16 @@ int main()
         hdrShader.setFloat("exposure", exposure);
         renderQuad();
 
-        std::cout << "hdr: " << (hdr ? "on" : "off") << "| exposure: " << exposure << std::endl;
+		static decltype(hdr) Shdr = !hdr;
+		static decltype(exposure) Sexposure = !exposure;
+		if (Shdr != hdr || Sexposure != exposure)
+		{
+			Shdr = hdr;
+			Sexposure = exposure;
+			std::cout << "hdr(SPACE): " << (hdr ? "on" : "off") << "| exposure(Q|E): " << exposure << std::endl;
+		}
 
+      
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
