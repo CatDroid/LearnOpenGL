@@ -92,7 +92,44 @@ int main()
 				对于OpenglES 默认是sRGB的
 				对于OpenGL sRGB默认是关闭的
 
-	实际上测试没有作用, 使用glEnable(GL_FRAMEBUFFER_SRGB)是有作用的
+	 实际测试在PC上 使用glEnable(GL_FRAMEBUFFER_SRGB)是有作用的
+
+	移动端:
+	Applications may wish to use sRGB format default framebuffers to
+	more easily achieve sRGB rendering to display devices. This
+	extension allows creating EGLSurfaces which will be rendered to in
+	sRGB by OpenGL contexts supporting that capability.
+
+	可以创建EGLSurface使用sRGB纹理
+	EGL扩展  KHR_gl_colorspace/EGL_KHR_gl_colorspace  EGL 1.4 is required.
+	https://registry.khronos.org/EGL/extensions/KHR/EGL_KHR_gl_colorspace.txt
+	eglCreateWindowSurface,
+	eglCreatePbufferSurface
+	eglCreatePixmapSurface
+	可以使用
+		EGL_GL_COLORSPACE_KHR						0x309D
+	设置值为
+		EGL_GL_COLORSPACE_SRGB_KHR              0x3089
+		EGL_GL_COLORSPACE_LINEAR_KHR			0x308A
+
+	EGL_GL_COLORSPACE_KHR 的默认值为EGL_GL_COLORSPACE_LINEAR_KHR
+
+	EGL_GL_COLORSPACE_KHR 属性仅由支持 sRGB 帧缓冲区的 OpenGL 和 OpenGL ES 上下文使用。 
+	EGL 本身不区分多个色彩空间模型(colorspace models)。
+	EGL_GL_COLORSPACE_KHR 指定了 OpenGL 和 OpenGL ES 在渲染到表面时(rendering to the surface)使用的色彩空间
+	
+	如果它的值为 EGL_GL_COLORSPACE_SRGB_KHR
+	，则假定一个非线性的(non-linear)、感知上一致(perceptually uniform)的色彩空间，
+	对应的 GL_FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING 值为 GL_SRGB
+
+	如果它的值为 EGL_GL_COLORSPACE_LINEAR_KHR
+	，则假定为线性色彩空间，
+	对应的 GL_FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING 值为GL_LINEAR
+
+	使用 OpenGL 的应用程序, 必须另外启用 GL_FRAMEBUFFER_SRGB 以执行 sRGB 渲染，
+	即使绑定了 sRGB 表面；
+	 OpenGL ES不需要（或支持）此启用
+
 	*/
 	//glfwWindowHint(GLFW_SRGB_CAPABLE, true);
 
