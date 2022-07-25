@@ -85,9 +85,10 @@ int main()
     Shader shader("6.lighting.vs", "6.lighting.fs");
     Shader hdrShader("6.hdr.vs", "6.hdr.fs");
 
-    // load textures
+    // load textures --- albedo纹理是作为sRGB纹理
     // -------------
-    unsigned int woodTexture = loadTexture(FileSystem::getPath("resources/textures/wood.png").c_str(), true); // note that we're loading the texture as an SRGB texture
+    unsigned int woodTexture = loadTexture(FileSystem::getPath("resources/textures/wood.png").c_str(), true); 
+	// note that we're loading the texture as an SRGB texture
 
     // configure floating point framebuffer
     // ------------------------------------
@@ -124,6 +125,10 @@ int main()
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         std::cout << "Framebuffer not complete!" << std::endl;
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// 注意: 这里除了albedo纹理是sRGB, 创建的浮点纹理fbo都不是sRGB的
+	//         glfw虽然默认创建带sRGB附件的默认fbo, 但是这里也没有调用 
+	//         glEnable GL_FRAMEBUFFER_SRGB
 
     // lighting info
     // -------------
