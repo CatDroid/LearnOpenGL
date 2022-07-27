@@ -117,15 +117,20 @@ int main()
     glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, SCR_WIDTH, SCR_HEIGHT);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
-    // tell OpenGL which color attachments we'll use (of this framebuffer) for rendering 
+    
+	// !! MRT 调用 glDrawBuffers 声明fbo的slot对应的附件 !! 
+	//           否则OpenGL只会渲染到帧缓冲的第一个颜色附件
     unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
     glDrawBuffers(2, attachments);
-    // finally check if framebuffer is complete
+ 
+
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         std::cout << "Framebuffer not complete!" << std::endl;
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    // ping-pong-framebuffer for blurring
+
+
+    // 两个乒乓buffer作为blur滤镜 ping-pong-framebuffer for blurring  
     unsigned int pingpongFBO[2];
     unsigned int pingpongColorbuffers[2];
     glGenFramebuffers(2, pingpongFBO);
@@ -205,17 +210,21 @@ int main()
         // set lighting uniforms
         for (unsigned int i = 0; i < lightPositions.size(); i++)
         {
+			// 设置光源的位置和颜色到 uniform， shader中uniform是结构体类型, 可单独一个个设置结构体成员
             shader.setVec3("lights[" + std::to_string(i) + "].Position", lightPositions[i]);
             shader.setVec3("lights[" + std::to_string(i) + "].Color", lightColors[i]);
         }
         shader.setVec3("viewPos", camera.Position);
-        // create one large cube that acts as the floor
+
+
+        // 场景中画一个大的立方体 create one large cube that acts as the floor
         model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(0.0f, -1.0f, 0.0));
         model = glm::scale(model, glm::vec3(12.5f, 0.5f, 12.5f));
         shader.setMat4("model", model);
         renderCube();
-        // then create multiple cubes as the scenery
+
+        // 场景中画多个立方体  then create multiple cubes as the scenery
         glBindTexture(GL_TEXTURE_2D, containerTexture);
         model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(0.0f, 1.5f, 0.0));
@@ -254,7 +263,7 @@ int main()
         shader.setMat4("model", model);
         renderCube();
 
-        // finally show all the light sources as bright cubes
+        // 用立方体当做光源 finally show all the light sources as bright cubes
         shaderLight.use();
         shaderLight.setMat4("projection", projection);
         shaderLight.setMat4("view", view);
@@ -270,37 +279,45 @@ int main()
         }
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-        // 2. blur bright fragments with two-pass Gaussian Blur 
+        // 2. 高斯模糊(Gaussian blur) blur bright fragments with two-pass Gaussian Blur 
         // --------------------------------------------------
-        bool horizontal = true, first_iteration = true;
+		unsigned int* p_LastTexture = &colorBuffers[1];
         unsigned int amount = 10;
         shaderBlur.use();
-        for (unsigned int i = 0; i < amount; i++)
+        for (unsigned int i = 0; i < amount; i++) // 画10次 10/2 = 5
         {
-            glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[horizontal]);
-            shaderBlur.setInt("horizontal", horizontal);
-            glBindTexture(GL_TEXTURE_2D, first_iteration ? colorBuffers[1] : pingpongColorbuffers[!horizontal]);  // bind texture of other framebuffer (or scene if first iteration)
+			unsigned int index = i % 2;
+            glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[index]);
+            shaderBlur.setInt("horizontal", index);
+            glBindTexture(GL_TEXTURE_2D, *p_LastTexture);  // bind texture of other framebuffer (or scene if first iteration)
             renderQuad();
-            horizontal = !horizontal;
-            if (first_iteration)
-                first_iteration = false;
+            
+			p_LastTexture = &pingpongColorbuffers[index];
         }
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
         // 3. now render floating point color buffer to 2D quad and tonemap HDR colors to default framebuffer's (clamped) color range
-        // --------------------------------------------------------------------------------------------------------------------------
+        //      混合两个浮点纹理 + 色调映射 + 伽马校正
+		// --------------------------------------------------------------------------------------------------------------------------
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         shaderBloomFinal.use();
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, colorBuffers[0]);
         glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[!horizontal]);
+        glBindTexture(GL_TEXTURE_2D, *p_LastTexture);
         shaderBloomFinal.setInt("bloom", bloom);
         shaderBloomFinal.setFloat("exposure", exposure);
         renderQuad();
 
-        std::cout << "bloom: " << (bloom ? "on" : "off") << "| exposure: " << exposure << std::endl;
-
+		static decltype(bloom) sBloom = !bloom;
+		static decltype(exposure) sExposure = !exposure;
+		if (sBloom != bloom || sExposure != exposure)
+		{
+			sBloom = bloom;
+			sExposure = exposure;
+			std::cout << "bloom: " << (bloom ? "on" : "off") << "| exposure: " << exposure << std::endl;
+		}
+       
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
