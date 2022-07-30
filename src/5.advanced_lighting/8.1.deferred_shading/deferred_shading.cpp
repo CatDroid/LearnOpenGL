@@ -240,6 +240,13 @@ int main()
 			依赖:
 				MRT 
 				浮点纹理(坐标信息)
+
+			注意:
+				glClearColor  在光照计算阶段 使用自定义的颜色 
+								   每帧两次 glClearColor 并将 if (Normal == vec3(0.0, 0.0, 0.0){discard;} 添加到照明阶段
+								   或者
+								   每帧一次 glClearColor成黑色, 照明阶段, 如果法线为黑色, 则以自定义颜色提前返回
+				GL_BLEND    在几何处理阶段 不能打开 
 		*/
         // 1. geometry pass: render scene's geometry/color data into gbuffer
 		//     几何处理阶段 --- a.支持MRT b.支持浮点纹理 
@@ -261,35 +268,37 @@ int main()
                 shaderGeometryPass.setMat4("model", model);   
                 backpack.Draw(shaderGeometryPass);
             }
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
         // 2. lighting pass: calculate lighting by iterating over a screen filled quad pixel-by-pixel using the gbuffer's content.
-        // -----------------------------------------------------------------------------------------------------------------------
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        shaderLightingPass.use();
-		//shaderLightingPass.setInt("gPosition", 0); // uniform (Sampler) 设置一次即可 program会记录下
-		//shaderLightingPass.setInt("gNormal", 1);
-		//shaderLightingPass.setInt("gAlbedoSpec", 2);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, gPosition);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, gNormal);
-        glActiveTexture(GL_TEXTURE2);
-        glBindTexture(GL_TEXTURE_2D, gAlbedoSpec); // 绑定纹理单元
-        // send light relevant uniforms 光照阶段 设置全部光源的位置和颜色 以及相机位置
-        for (unsigned int i = 0; i < lightPositions.size(); i++)
-        {
-            shaderLightingPass.setVec3("lights[" + std::to_string(i) + "].Position", lightPositions[i]);
-            shaderLightingPass.setVec3("lights[" + std::to_string(i) + "].Color", lightColors[i]);
-            // update attenuation parameters and calculate radius
-            const float linear = 0.7f;
-            const float quadratic = 1.8f;
-            shaderLightingPass.setFloat("lights[" + std::to_string(i) + "].Linear", linear);
-            shaderLightingPass.setFloat("lights[" + std::to_string(i) + "].Quadratic", quadratic);
-        }
-        shaderLightingPass.setVec3("viewPos", camera.Position);
-        // finally render quad
-        renderQuad();
+        //      注意 光照计算阶段 这里直接画到fbo=0上; 后面前向渲染也是画到fbo=0上
+		//		但是这时候 fbo=0的深度buffer是clear的, 后面前向渲染会拷贝深度到fbo=0上再画
+		// -----------------------------------------------------------------------------------------------------------------------
+		glBindFramebuffer(GL_FRAMEBUFFER, 0); 
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			shaderLightingPass.use();
+			//shaderLightingPass.setInt("gPosition", 0); // uniform (Sampler) 设置一次即可 program会记录下
+			//shaderLightingPass.setInt("gNormal", 1);
+			//shaderLightingPass.setInt("gAlbedoSpec", 2);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, gPosition);
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, gNormal);
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, gAlbedoSpec); // 绑定纹理单元
+			// send light relevant uniforms 光照阶段 设置全部光源的位置和颜色 以及相机位置
+			for (unsigned int i = 0; i < lightPositions.size(); i++)
+			{
+				shaderLightingPass.setVec3("lights[" + std::to_string(i) + "].Position", lightPositions[i]);
+				shaderLightingPass.setVec3("lights[" + std::to_string(i) + "].Color", lightColors[i]);
+				// update attenuation parameters and calculate radius
+				const float linear = 0.7f;
+				const float quadratic = 1.8f;
+				shaderLightingPass.setFloat("lights[" + std::to_string(i) + "].Linear", linear);
+				shaderLightingPass.setFloat("lights[" + std::to_string(i) + "].Quadratic", quadratic);
+			}
+			shaderLightingPass.setVec3("viewPos", camera.Position);
+			// finally render quad
+			renderQuad();
 
  
 		// 延迟渲染和前向渲染 结合--- 解决混合问题

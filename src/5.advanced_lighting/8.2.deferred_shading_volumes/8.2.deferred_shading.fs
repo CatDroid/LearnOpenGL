@@ -19,6 +19,15 @@ const int NR_LIGHTS = 32;
 uniform Light lights[NR_LIGHTS];
 uniform vec3 viewPos;
 
+// WebGL和Opengl ES 2.0，缺少isnan是个问题
+// gles 3.0 
+// genBtype isnan(genFDType x)   判断x是否是NaN
+// genBtype isinf(genFDType x) 	判断x是否是无穷大
+bool isnan( float val )
+{
+	return (val < 0.0 || 0.0 < val || val == 0.0) ? false : true;
+}
+
 void main()
 {             
     // retrieve data from gbuffer
@@ -26,6 +35,21 @@ void main()
     vec3 Normal = texture(gNormal, TexCoords).rgb;
     vec3 Diffuse = texture(gAlbedoSpec, TexCoords).rgb;
     float Specular = texture(gAlbedoSpec, TexCoords).a;
+
+	#if 0 
+	if (abs(Normal.x) < 1e-6 
+			&& abs(Normal.y) < 1e-6   
+			&& abs(Normal.z) < 1e-6)
+	{
+		#if 0
+			vec4 clearColor = vec4(1.0, 1.0, 1.0, 1.0); 
+			FragColor = clearColor;
+			return ;
+		#else
+			discard; // discard不是函数; 这里就可以直接用glClearColor设置的值
+		#endif  
+	}
+	#endif 
     
     // then calculate lighting as usual
     vec3 lighting  = Diffuse * 0.1; // hard-coded ambient component

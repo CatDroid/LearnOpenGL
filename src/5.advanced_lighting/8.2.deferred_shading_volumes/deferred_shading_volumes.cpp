@@ -186,6 +186,18 @@ int main()
         // ------
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		/* 
+			注意! 
+			1. glClearColor
+				这样MRT所有的输出默认都是0,0,0,1 包括法线, shader中可能要判断
+				法线不能为黑色(black)，因为它们是标准化的(normalized)。
+				
+			2. GL_BLEND 
+				几何阶段需要不混合, 这些g-buffer信息 glDisable(GL_BLEND); 
+
+		*/
+
+		glDisable(GL_BLEND); 
 
         // 1. geometry pass: render scene's geometry/color data into gbuffer
         // -----------------------------------------------------------------
@@ -205,17 +217,20 @@ int main()
             shaderGeometryPass.setMat4("model", model);
             backpack.Draw(shaderGeometryPass);
         }
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+		
 		/* 
 			延迟渲染 : 有效地将计算从 nr_objects * nr_lights 减少到 nr_objects + nr_lights
 						   非常适合渲染大量灯光
 
 		*/
-
         // 2. lighting pass: calculate lighting by iterating over a screen filled quad pixel-by-pixel using the gbuffer's content.
-        // -----------------------------------------------------------------------------------------------------------------------
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		//						注意 光照计算阶段 这里直接画到fbo=0上; 后面前向渲染也是画到fbo=0上
+		//						但是这时候 fbo=0的深度buffer是clear的, 后面前向渲染会拷贝深度到fbo=0上再画
+		// -----------------------------------------------------------------------------------------------------------------------
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glClearColor(1.0, 0.0, 0.0, 1.0); // 这个没有什么作用 除非shader使用discard; 
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         shaderLightingPass.use();
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, gPosition);
