@@ -228,8 +228,9 @@ int main()
 
 			缺点:
 				占用内存: 在其纹理颜色缓冲区中存储相对大量的场景数据。特别是因为像位置向量这样的场景数据需要"高精度"
-				不支持混合（因为我们只有最顶层片段的信息）
+				不支持混合（因为我们只有最顶层片段的信息）G 缓冲区中的所有值都来自单个片段, 混合是对多个片段的组合进行操作
 				MSAA 不再有效
+				相同的照明算法
 
 			依赖:
 				MRT 
@@ -270,7 +271,7 @@ int main()
         glBindTexture(GL_TEXTURE_2D, gNormal);
         glActiveTexture(GL_TEXTURE2);
         glBindTexture(GL_TEXTURE_2D, gAlbedoSpec); // 绑定纹理单元
-        // send light relevant uniforms
+        // send light relevant uniforms 光照阶段 设置全部光源的位置和颜色 以及相机位置
         for (unsigned int i = 0; i < lightPositions.size(); i++)
         {
             shaderLightingPass.setVec3("lights[" + std::to_string(i) + "].Position", lightPositions[i]);
@@ -285,19 +286,56 @@ int main()
         // finally render quad
         renderQuad();
 
-        // 2.5. copy content of geometry's depth buffer to default framebuffer's depth buffer
+ 
+		// 延迟渲染和前向渲染 结合--- 解决混合问题
+		// 渲染器分成两部分：
+		//			一个是延迟渲染部分，
+		//			另一个是前向渲染部分，
+		//			专门用于混合或不适合延迟渲染管道的特殊着色器效果
+
+		/*
+			这里只拷贝了深度buffer, 模板有可以
+			glBlitFramebuffer GL_DEPTH_BUFFER_BIT
+
+			void glBlitFramebuffer(	
+				GLint srcX0,GLint srcY0,GLint srcX1,GLint srcY1,
+				GLint dstX0,GLint dstY0,GLint dstX1,GLint dstY1,
+				GLbitfield mask,
+				GLenum filter);
+			"按位或" 要复制哪些缓冲区的标志  --- 注意这里没有指定颜色附件哪一个, 需要结合glReadBuffer
+			允许的标志是 GL_COLOR_BUFFER_BIT、GL_DEPTH_BUFFER_BIT 和 GL_STENCIL_BUFFER_BIT。
+		
+
+			因为不是拷贝颜色缓冲, 所以不用调用glReadBuffer(GLenum mode)
+			glReadBuffer 指定一个颜色缓冲区作为后续 glReadPixels glCopyTexImage2D glCopyTexSubImage2D  的源
+			常数 GL_COLOR_ATTACHMENTi 可用于指示第 i 个颜色附件
+			默认情况 单缓冲配置中为 GL_FRONT，在双缓冲配置中为 GL_BACK
+
+			注意：这种情况不能把上一个fbo的framebuffer invalidate
+			glInvalidateFramebuffer(	GLenum target, GLsizei numAttachments, const GLenum *attachments);
+			target  GL_READ_FRAMEBFUFFER, GL_DRAW_FRAMEBUFFER or GL_FRAMEBUFFER
+			attachments GL_COLOR_ATTACHMENTi, GL_DEPTH_ATTACHMENT, GL_STENCIL_ATTACHMENT, and/or GL_DEPTH_STENCIL_ATTACHMENT
+			指定那个fbo的那些附件需要drop
+
+		*/
+        // 2.5. copy content of geometry's depth buffer to default framebuffer's depth buffer 
         // ----------------------------------------------------------------------------------
         glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); // write to default framebuffer
-        // blit to default framebuffer. Note that this may or may not work as the internal formats of both the FBO and default framebuffer have to match.
-        // the internal formats are implementation defined. This works on all of my systems, but if it doesn't on yours you'll likely have to write to the 		
-        // depth buffer in another shader stage (or somehow see to match the default framebuffer's internal format with the FBO's internal format).
+		/*
+			blit 到默认帧缓冲区。 
+			请注意，这可能会或可能不会起作用，因为 FBO 和默认帧缓冲区的内部格式必须匹配。
+			内部格式是实现定义的。(the internal formats are implementation defined)
+			这适用于我的所有系统，但如果它不适用于您的系统，
+			可能须在另一个着色器阶段(another shader stage)写入深度缓冲区
+			（或者以某种方式查看将默认帧缓冲区的内部格式(default framebuffer's internal format)与 FBO 的内部格式匹配）。
+		*/
         glBlitFramebuffer(0, 0, SCR_WIDTH, SCR_HEIGHT, 0, 0, SCR_WIDTH, SCR_HEIGHT, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
         // 3. render lights on top of scene
         // --------------------------------
-        shaderLightBox.use();
+        shaderLightBox.use(); // deferred_light_box.vs
         shaderLightBox.setMat4("projection", projection);
         shaderLightBox.setMat4("view", view);
         for (unsigned int i = 0; i < lightPositions.size(); i++)

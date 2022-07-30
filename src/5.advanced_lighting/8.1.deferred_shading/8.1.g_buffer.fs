@@ -25,6 +25,9 @@ uniform sampler2D texture_specular1;
 
 void main()
 {    
+	// GBuffer中 我们将所有光照变量存储（并计算）在世界空间中。
+
+
     // store the fragment position vector in the first gbuffer texture
     gPosition = FragPos;
     // also store the per-fragment normals into the gbuffer
