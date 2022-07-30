@@ -211,12 +211,15 @@ int main()
         // -----------------------------------------------------------------------------------------------------------------------
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         shaderLightingPass.use();
+		//shaderLightingPass.setInt("gPosition", 0); // uniform (Sampler) 设置一次即可 program会记录下
+		//shaderLightingPass.setInt("gNormal", 1);
+		//shaderLightingPass.setInt("gAlbedoSpec", 2);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, gPosition);
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, gNormal);
         glActiveTexture(GL_TEXTURE2);
-        glBindTexture(GL_TEXTURE_2D, gAlbedoSpec);
+        glBindTexture(GL_TEXTURE_2D, gAlbedoSpec); // 绑定纹理单元
         // send light relevant uniforms
         for (unsigned int i = 0; i < lightPositions.size(); i++)
         {
