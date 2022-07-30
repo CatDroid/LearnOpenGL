@@ -228,6 +228,34 @@ int main()
             const float quadratic = 1.8f;
             shaderLightingPass.setFloat("lights[" + std::to_string(i) + "].Linear", linear);
             shaderLightingPass.setFloat("lights[" + std::to_string(i) + "].Quadratic", quadratic);
+
+			/* 如果我们计算场景中每个光源的贡献，而不管它们与片段的距离如何。
+			    这些光源中有很大一部分永远不会到达片段，那么会浪费所有这些光照计算
+
+			    light volumes光体积: 
+					背后的想法是计算光源的半径或体积，即其光线能够到达碎片的区域。
+					由于大多数光源使用某种形式的衰减，
+					我们可以使用它来计算它们的光能够到达的最大距离或半径。
+					然后，我们只在片段位于这些光体积中的一个或多个内时才进行昂贵的光照计算。
+					这可以为我们节省大量的计算，
+					因为我们现在只计算必要的光照。
+
+					诀窍主要是弄清楚光源的光体积的大小或半径 
+					--- 点光源衰减函数  Attenuation = 1 / (Kc + Kl * d + Kq * d^2)
+
+					--- Attenuation 不可能为0 因为Kc=1  --改为 求解接近 0.0 但仍被认为是暗的亮度值
+
+					--- 8 位帧缓冲区,每个组件最大强度为256, 所以可以考虑 这个暗的亮度值为 5/256 计算半径
+					     5/256 = Imax / Attenuation , Imax是光源颜色
+
+					--- 点光源衰减函数, 在其可见范围内大多是暗的。
+					     如果我们将其限制为比 5/256 更暗的亮度，则光体积(light volume)会变得太大，因此效果会降低。 
+						 只要用户看不到光源在其体积边界处突然中断，我们就可以了。
+						 较高的亮度阈值会导致较小的 光体积(light volume)，从而提高效率，
+						 但会产生明显的伪影artifacts ，其中照明似乎在体积的边界处中断。
+
+			*/ 
+
             // then calculate radius of light volume/sphere
             const float maxBrightness = std::fmaxf(std::fmaxf(lightColors[i].r, lightColors[i].g), lightColors[i].b);
             float radius = (-linear + std::sqrt(linear * linear - 4 * quadratic * (constant - (256.0f / 5.0f) * maxBrightness))) / (2.0f * quadratic);

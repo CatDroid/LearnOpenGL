@@ -34,8 +34,24 @@ void main()
     {
         // calculate distance between light source and current fragment
         float distance = length(lights[i].Position - FragPos);
-        if(distance < lights[i].Radius)
+        if(distance < lights[i].Radius) 
         {
+			/*
+				光体积:
+					只有在光体积半径内(暗的亮度阈值是5/256),才计算光照
+
+				实际不可行:
+
+					GPU 和 GLSL 在优化循环和分支方面非常糟糕。
+					原因是 GPU 上的着色器执行是高度并行的，
+					并且大多数架构都要求对于大量线程，它们需要运行完全相同的着色器代码以使其高效。
+					这通常意味着运行着色器会执行 if 语句的所有分支，
+					以确保着色器运行对于该组线程是相同的，
+					从而使我们之前的半径检查优化完全无用；
+					我们仍然会计算所有光源的光照！
+			*/
+
+
             // diffuse
             vec3 lightDir = normalize(lights[i].Position - FragPos);
             vec3 diffuse = max(dot(Normal, lightDir), 0.0) * Diffuse * lights[i].Color;
