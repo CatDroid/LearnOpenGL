@@ -39,6 +39,16 @@ int main()
     // glfw: initialize and configure
     // ------------------------------
     glfwInit();
+
+	// https://www.glfw.org/docs/latest/window_guide.html
+	glfwWindowHint(GLFW_RED_BITS,     8);
+	glfwWindowHint(GLFW_GREEN_BITS, 8);
+	glfwWindowHint(GLFW_BLUE_BITS,    8);
+	glfwWindowHint(GLFW_ALPHA_BITS,  8); //  还可以是 GLFW_DONT_CARE 
+
+	glfwWindowHint(GLFW_DEPTH_BITS ,  24); // default = 24
+	glfwWindowHint(GLFW_STENCIL_BITS, 8);  // default = 8
+
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -154,6 +164,9 @@ int main()
     unsigned int rboDepth;
     glGenRenderbuffers(1, &rboDepth);
     glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
+	// glRenderbufferStorage(	GLenum target, GLenum internalformat, GLsizei width, GLsizei height);
+	// Base Format GL_DEPTH_COMPONENT
+	// Sized Internal Format  GL_DEPTH_COMPONENT16  GL_DEPTH_COMPONENT24  GL_DEPTH24_STENCIL8 
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, SCR_WIDTH, SCR_HEIGHT);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
     // finally check if framebuffer is complete
