@@ -102,9 +102,13 @@ int main()
 
     // configure g-buffer framebuffer 
 	//               三个颜色附件  
-	//               其中两个是GL_RGBA16F(坐标和方向) 
-	//               一个是GL_RGBA(漫反射颜色+高光度alpha) 
-    // ------------------------------
+	//               其中两个是GL_RGBA16F( 坐标和方向, 这里只用了half float) 高精度纹理, 每个组件 16 或 32 位浮点数
+	//               一个是GL_RGBA(漫反射颜色(向量)+镜面强度(标量))  默认纹理精度， 每个组件 8 位精度
+    //               
+	//               这里使用 GL_RGBA16F 而不是 GL_RGB16F，因为由于字节对齐，
+	//               GPU 通常更喜欢 4 分量格式而不是 3 分量格式；
+	//               否则，某些驱动程序可能无法完成帧缓冲区( fail to complete the framebuffer)。
+	// ------------------------------
     unsigned int gBuffer;
     glGenFramebuffers(1, &gBuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
@@ -113,7 +117,8 @@ int main()
     // position color buffer
     glGenTextures(1, &gPosition);
     glBindTexture(GL_TEXTURE_2D, gPosition);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+	// 浮点纹理 GL_RGBA16F 的 data type 可以是  GL_FLOAT 或者 GL_HALF_FLOAT
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL); 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gPosition, 0);
