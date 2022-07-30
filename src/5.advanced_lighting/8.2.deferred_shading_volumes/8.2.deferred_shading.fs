@@ -58,7 +58,8 @@ void main()
     {
         // calculate distance between light source and current fragment
         float distance = length(lights[i].Position - FragPos);
-        if(distance < lights[i].Radius) 
+		// if (distance2 <= radius2) // 常见优化是省去平方根,改为存储平方半径
+        if(distance < lights[i].Radius)  
         {
 			/*
 				光体积:
