@@ -207,6 +207,12 @@ int main()
         }
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+		/* 
+			延迟渲染 : 有效地将计算从 nr_objects * nr_lights 减少到 nr_objects + nr_lights
+						   非常适合渲染大量灯光
+
+		*/
+
         // 2. lighting pass: calculate lighting by iterating over a screen filled quad pixel-by-pixel using the gbuffer's content.
         // -----------------------------------------------------------------------------------------------------------------------
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
