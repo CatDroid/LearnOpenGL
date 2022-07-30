@@ -1,7 +1,7 @@
 #version 330 core
-layout (location = 0) out vec3 gPosition;
-layout (location = 1) out vec3 gNormal;
-layout (location = 2) out vec4 gAlbedoSpec;
+layout (location = 0) out vec3 gPosition;  // MRT多路输出 
+layout (location = 1) out vec3 gNormal;  // 注意 gPosition gNormal  都是浮点纹理 GL_RGBA16F + GL_RGBA + GL_FLOAT
+layout (location = 2) out vec4 gAlbedoSpec; //  gAlbedoSpec 是个定点纹理   GL_RGBA + GL_RGBA + GL_UNSIGN_BYTE
 
 in vec2 TexCoords;
 in vec3 FragPos;

@@ -77,7 +77,7 @@ int main()
 
     // configure global opengl state
     // -----------------------------
-    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_DEPTH_TEST); // 打开了深度测试 
 
     // build and compile shaders
     // -------------------------
@@ -100,12 +100,16 @@ int main()
     objectPositions.push_back(glm::vec3( 3.0,  -0.5,  3.0));
 
 
-    // configure g-buffer framebuffer
+    // configure g-buffer framebuffer 
+	//               三个颜色附件  
+	//               其中两个是GL_RGBA16F(坐标和方向) 
+	//               一个是GL_RGBA(漫反射颜色+高光度alpha) 
     // ------------------------------
     unsigned int gBuffer;
     glGenFramebuffers(1, &gBuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
     unsigned int gPosition, gNormal, gAlbedoSpec;
+
     // position color buffer
     glGenTextures(1, &gPosition);
     glBindTexture(GL_TEXTURE_2D, gPosition);
@@ -113,6 +117,7 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gPosition, 0);
+
     // normal color buffer
     glGenTextures(1, &gNormal);
     glBindTexture(GL_TEXTURE_2D, gNormal);
@@ -120,6 +125,7 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gNormal, 0);
+
     // color + specular color buffer
     glGenTextures(1, &gAlbedoSpec);
     glBindTexture(GL_TEXTURE_2D, gAlbedoSpec);
@@ -127,9 +133,13 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gAlbedoSpec, 0);
+
+	// 设置当前绑定的fbo 每个slot对应的附件
     // tell OpenGL which color attachments we'll use (of this framebuffer) for rendering 
     unsigned int attachments[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
     glDrawBuffers(3, attachments);
+
+
     // create and attach depth buffer (renderbuffer)
     unsigned int rboDepth;
     glGenRenderbuffers(1, &rboDepth);
@@ -141,7 +151,8 @@ int main()
         std::cout << "Framebuffer not complete!" << std::endl;
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    // lighting info
+
+    // lighting info  随机生成32个光源 信息(位置和颜色)
     // -------------
     const unsigned int NR_LIGHTS = 32;
     std::vector<glm::vec3> lightPositions;
@@ -187,7 +198,40 @@ int main()
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+		/*
+			延迟(Defer)或推迟(Postpone)大部分计算量非常大的渲染(像是光照)到后期进行处理的想法。
+			
+			它包含两个处理阶段(Pass)：
+
+			在第一个几何处理阶段(Geometry Pass)中，
+			我们先渲染场景一次，获取对象的各种几何信息，并储存在一系列叫做G缓冲(G-buffer)的纹理中；
+			比如 位置向量(Position Vector)、颜色向量(Color Vector)、法向量(Normal Vector)和/或镜面值(Specular Value)。
+			场景中这些储存在G缓冲中的几何信息将会在之后用来做(更复杂的)光照计算。
+
+			在第二个光照处理阶段(Lighting Pass)中使用G缓冲内的纹理数据。
+			在光照处理阶段中，我们渲染一个屏幕大小的方形，并使用G缓冲中的几何数据对每一个片段计算场景的光照
+			我们逐个像素地(访问, 相当于遍历了)遍历 G 缓冲区。
+			
+			我们没有将每个对象从顶点着色器一直带到片段着色器，而是将其高级片段处理"解耦"到后面的阶段。 
+			"光照计算完全相同"，但这次我们从相应的 G-buffer 纹理中获取所有需要的输入变量，
+			而不是顶点着色器（加上一些统一变量）。
+
+			优点:
+				任何最终进入 G 缓冲区的片段都是最终作为屏幕像素的实际片段信息。
+				深度测试已经得出结论，这个片段是最后一个也是最顶层的片段。
+				支持很多数量的光源
+
+			缺点:
+				占用内存: 在其纹理颜色缓冲区中存储相对大量的场景数据。特别是因为像位置向量这样的场景数据需要"高精度"
+				不支持混合（因为我们只有最顶层片段的信息）
+				MSAA 不再有效
+
+			依赖:
+				MRT 
+				浮点纹理(坐标信息)
+		*/
         // 1. geometry pass: render scene's geometry/color data into gbuffer
+		//     几何处理阶段 --- a.支持MRT b.支持浮点纹理 
         // -----------------------------------------------------------------
         glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -197,12 +241,13 @@ int main()
             shaderGeometryPass.use();
             shaderGeometryPass.setMat4("projection", projection);
             shaderGeometryPass.setMat4("view", view);
+			// 注意: 这里是有打开深度测试和写入的, 确保G缓冲中每个纹素, 都是"最顶层的片段"
             for (unsigned int i = 0; i < objectPositions.size(); i++)
             {
                 model = glm::mat4(1.0f);
                 model = glm::translate(model, objectPositions[i]);
                 model = glm::scale(model, glm::vec3(0.5f));
-                shaderGeometryPass.setMat4("model", model);
+                shaderGeometryPass.setMat4("model", model);   
                 backpack.Draw(shaderGeometryPass);
             }
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
