@@ -108,6 +108,11 @@ int main()
 	//               这里使用 GL_RGBA16F 而不是 GL_RGB16F，因为由于字节对齐，
 	//               GPU 通常更喜欢 4 分量格式而不是 3 分量格式；
 	//               否则，某些驱动程序可能无法完成帧缓冲区( fail to complete the framebuffer)。
+	//				 GL_RGB16F在兼容性方面不如GL_RGBA16F 
+	//					Intel HD 520 (Mobile Skylake)   ok 
+	//					Intel HD 4600 将其绑定到 FBO 会触发错误 1286 
+	//						GL_RGB16F 必须更改为 GL_RGBA16F 才能用作帧缓冲区的输出
+	//						片段着色器中的 vec3 应相应地更改为 vec4
 	// ------------------------------
     unsigned int gBuffer;
     glGenFramebuffers(1, &gBuffer);
