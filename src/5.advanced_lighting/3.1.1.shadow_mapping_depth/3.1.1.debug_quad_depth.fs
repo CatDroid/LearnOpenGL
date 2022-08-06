@@ -7,6 +7,10 @@ uniform sampler2D depthMap;
 uniform float near_plane;
 uniform float far_plane;
 
+// https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/opengl-perspective-projection-matrix
+// LinearizeDepth 返回的结果是 - Pview.z   是视图空间的z坐标取负
+// 所以 LinearizeDepth(depthValue) / far_plane 还是远的地方是1(白色)
+// glm::perspective 对opengl的计算是 GLM_CLIP_CONTROL_RH_NO 右手坐标系 从-1到1 
 // required when using a perspective projection matrix
 float LinearizeDepth(float depth)
 {
