@@ -73,7 +73,13 @@ void main()
         // get sample depth  gPosition纹理滤波方式是REPEAT
 		// 获取样本位置"从观察者视角第一个不被遮蔽"的深度值
         float sampleDepth = texture(gPosition, offset.xy).z; // get depth value of kernel sample
-        
+        /*
+			SSAO 实际是相机位置有关的
+				在相机A位置看 和 在相机B位置看, 表面的同一个点, 
+				由于A位置看, 一些采样点可能被遮挡, 在B位置看就不会
+				这样就会导致两个相机计算出来, 同一点的遮蔽强度，就会不一样
+		
+		*/
         // range check & accumulate
 		// abs在radius以内都是1， 在radius以外abs越大越接近0
         float rangeCheck = smoothstep(0.0, 1.0, radius / abs(fragPos.z - sampleDepth));
@@ -112,6 +118,12 @@ void main()
 	//  用来缩放环境光照分量
     
     FragColor = occlusion;
+	// 在片段着色器（out float FragColor;）中输出“float”时
+	// 因为“FragColor”是一个"float"而不是"vec4"，
+	// 所以输出的是："float, undef, undef, undef"
+	// 解决?? 实际FBO颜色附件只有GL_RED, 其他通道都不会写入
+	// glDisable(GL_BLEND); renderQuad(for SSAO); glEnable(GL_BLEND);
+	// oFragColor = vec4(occlusion, 0.0, 0.0, 1.0); 
 
 	// FragColor = pow(occlusion, power);
 	// pow幂从而增加它的强

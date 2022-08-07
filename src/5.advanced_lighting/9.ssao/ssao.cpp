@@ -206,14 +206,14 @@ int main()
 
         sample = glm::normalize(sample); // 归一化(归一化并不会修改方向, 所以还在半球表面上)
 		
-		sample *= randomFloats(generator); // 0~1  长短不一, 在半球球里面
+		//sample *= randomFloats(generator); // 0~1  长短不一, 在半球球里面 --hhl 搬到后面好理解
 
 		// 由于样本内核将沿表面法线定向，因此生成的样本向量将全部位于半球中
 		// (sample样本向量是在切向空间, 所有只要z大于0, 那么就在半球内)
 		// 为了把更多的注意放在靠近真正片段的遮蔽上，
 		// 也就是将核心样本靠近原点分布, 用一个'双曲线'实现 缩放采样点 
 
-        float scale = float(i) / 64.0f;  //单位长度改成 0, 1/64, 2/64, 3/64
+        float scale = float(i) / 64.0f;  //单位长度改成 0, 1/64, 2/64, 3/64(采样向量的模长)
 		
 		// 实际是 a + f * (b - a) = 0.1 + ((i/64)^2)*(1.0-0.1)
 		// lerp从0.1开始, 所以不会低于0.1, 长度从0.1到1
@@ -221,6 +221,9 @@ int main()
 		// scale*scale  长度还是从0.1到1.0, 但是就变成 0.1 附近更加多
         scale = lerp(0.1f, 1.0f, scale * scale); 
         sample *= scale;
+
+		sample *= randomFloats(generator); // hhl 挪到这里 好理解 上面是控制摸长 从0到1(并且不均匀), 这里再引入随机
+
         ssaoKernel.push_back(sample);
     }
 
@@ -324,7 +327,7 @@ int main()
         // 2. generate SSAO texture
         // ------------------------
         glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
-            glClear(GL_COLOR_BUFFER_BIT);
+            glClear(GL_COLOR_BUFFER_BIT); // ssaoFBO只是个GL_RED colorclear为0,0,0,1
             shaderSSAO.use();
 			shaderSSAO.setBool("disableRandomRotation", gDisableRandomRotation);
             // Send kernel + rotation 
