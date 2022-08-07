@@ -16,11 +16,14 @@ uniform mat4 projection;
 void main()
 {
     vec4 viewPos = view * model * vec4(aPos, 1.0);
-    FragPos = viewPos.xyz; 
+
+    FragPos = viewPos.xyz; // FragPos是视图空间的
+
     TexCoords = aTexCoords;
     
     mat3 normalMatrix = transpose(inverse(mat3(view * model)));
     Normal = normalMatrix * (invertedNormals ? -aNormal : aNormal);
+	// invertedNormals 是画cube内部的时候 为true
     
     gl_Position = projection * viewPos;
 }

@@ -10,7 +10,7 @@ in vec3 Normal;
 void main()
 {    
     // store the fragment position vector in the first gbuffer texture
-    gPosition = FragPos;
+    gPosition = FragPos; // gPosition gNormal 都是视图空间的
     // also store the per-fragment normals into the gbuffer
     gNormal = normalize(Normal);
     // and the diffuse per-fragment color

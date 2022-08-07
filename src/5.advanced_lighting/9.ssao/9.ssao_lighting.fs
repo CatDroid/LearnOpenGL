@@ -23,16 +23,18 @@ void main()
     vec3 FragPos = texture(gPosition, TexCoords).rgb;
     vec3 Normal = texture(gNormal, TexCoords).rgb;
     vec3 Diffuse = texture(gAlbedo, TexCoords).rgb;
+
+	// 环境光强度 -- 已经做了1.0-遮罩强度
     float AmbientOcclusion = texture(ssao, TexCoords).r;
     
     // then calculate lighting as usual
-    vec3 ambient = vec3(0.3 * Diffuse * AmbientOcclusion);
+    vec3 ambient = vec3(0.3 * Diffuse * AmbientOcclusion);// 只有环境光部分 加上遮蔽因子
     vec3 lighting  = ambient; 
-    vec3 viewDir  = normalize(-FragPos); // viewpos is (0.0.0)
+    vec3 viewDir  = normalize(-FragPos); // viewpos is (0.0.0) 本来就在视图空间 viewDir是从表面点到相机
     // diffuse
     vec3 lightDir = normalize(light.Position - FragPos);
     vec3 diffuse = max(dot(Normal, lightDir), 0.0) * Diffuse * light.Color;
-    // specular
+    // specular blinn高光模型
     vec3 halfwayDir = normalize(lightDir + viewDir);  
     float spec = pow(max(dot(Normal, halfwayDir), 0.0), 8.0);
     vec3 specular = light.Color * spec;
