@@ -137,12 +137,17 @@ int main()
         glm::mat4 model = glm::mat4(1.0f);
         for (int row = 0; row < nrRows; ++row) 
         {
+			// 从上往下 金属度 逐步增加 
             shader.setFloat("metallic", (float)row / (float)nrRows);
             for (int col = 0; col < nrColumns; ++col) 
             {
+				// 从左往右边 粗糙度 逐步增加
                 // we clamp the roughness to 0.05 - 1.0 as perfectly smooth surfaces (roughness of 0.0) tend to look a bit off
                 // on direct lighting.
-                shader.setFloat("roughness", glm::clamp((float)col / (float)nrColumns, 0.05f, 1.0f));
+				// Blender/ThreeJS 团队也这样做
+				// 粗糙度不会是0，因为 一个表面在理论上是如此完美地反射,
+				// 镜面波瓣(specular lobe)在技术上也是 0.0， 所以没有什么可以显示的
+                shader.setFloat("roughness", glm::clamp((float)col / (float)nrColumns, 0.05f/*0.0f*/, 1.0f));
                 
                 model = glm::mat4(1.0f);
                 model = glm::translate(model, glm::vec3(
@@ -155,6 +160,7 @@ int main()
             }
         }
 
+		// 渲染光源(用一个小球表示点光源)
         // render light source (simply re-render sphere at light positions)
         // this looks a bit off as we use the same shader, but it'll make their positions obvious and 
         // keeps the codeprint small.
