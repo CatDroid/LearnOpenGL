@@ -121,6 +121,9 @@ void main()
 	float NDF  ;
 	float G  ;
 	vec3 F  ; // 菲涅尔方程是返回vec3的 代表RGB三种波长的反射率 
+
+	// 假设点光源体积无限小(方向光和聚光灯一样), 对于一个光源, 表面上的一点,该光源只有一个方向(一簇光线)影响
+	// 每个光源仅仅只有一个方向上的光线会影响物体表面的辐射率
     for(int i = 0; i < lightNum; ++i) 
     {
         // calculate per-light radiance
