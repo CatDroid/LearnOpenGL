@@ -34,6 +34,55 @@ bool firstMouse = true;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
+// 只显示某一部分的效果 D F G的值(单独一个光源)
+bool gShowD = false; 
+bool gShowF = false;
+bool gShowG = false;
+
+void dump()
+{
+#define _TRACE_STR(s) #s
+#define TRACE_STR(s) _TRACE_STR(s)
+	// 打印
+	{
+#define TRACE_STATUS  gShowD
+#define TRACE_KEY "N" // "D" 被占用了
+		static decltype(TRACE_STATUS) sStatus = !TRACE_STATUS;
+		if (sStatus != TRACE_STATUS)
+		{
+			sStatus = TRACE_STATUS;
+			printf("Press Key " TRACE_KEY " " TRACE_STR(TRACE_STATUS) " = %d\n", TRACE_STATUS);
+		}
+#undef TRACE_STATUS
+#undef TRACE_KEY
+	}
+	{
+#define TRACE_STATUS  gShowF
+#define TRACE_KEY "F"
+		static decltype(TRACE_STATUS) sStatus = !TRACE_STATUS;
+		if (sStatus != TRACE_STATUS)
+		{
+			sStatus = TRACE_STATUS;
+			printf("Press Key " TRACE_KEY " " TRACE_STR(TRACE_STATUS) " = %d\n", TRACE_STATUS);
+		}
+#undef TRACE_STATUS
+#undef TRACE_KEY
+	}
+
+	{
+#define TRACE_STATUS  gShowG
+#define TRACE_KEY "G"
+		static decltype(TRACE_STATUS) sStatus = !TRACE_STATUS;
+		if (sStatus != TRACE_STATUS)
+		{
+			sStatus = TRACE_STATUS;
+			printf("Press Key " TRACE_KEY " " TRACE_STR(TRACE_STATUS) " = %d\n", TRACE_STATUS);
+		}
+#undef TRACE_STATUS
+#undef TRACE_KEY
+	}
+}
+
 int main()
 {
     // glfw: initialize and configure
@@ -82,8 +131,8 @@ int main()
     Shader shader("1.1.pbr.vs", "1.1.pbr.fs");
 
     shader.use();
-    shader.setVec3("albedo", 0.5f, 0.0f, 0.0f);
-    shader.setFloat("ao", 1.0f);
+    shader.setVec3("albedo", 0.5f, 0.0f, 0.0f); // 浅红色
+    shader.setFloat("ao", 1.0f); // 完全没有环境遮挡
 
     // lights
     // ------
@@ -133,11 +182,15 @@ int main()
         shader.setMat4("view", view);
         shader.setVec3("camPos", camera.Position);
 
+		shader.setBool("showD",  gShowD);
+		shader.setBool("showF",  gShowF);
+		shader.setBool("showG", gShowG);
+
         // render rows*column number of spheres with varying metallic/roughness values scaled by rows and columns respectively
         glm::mat4 model = glm::mat4(1.0f);
         for (int row = 0; row < nrRows; ++row) 
         {
-			// 从上往下 金属度 逐步增加 
+			// 注: 是从下往上! 金属度 逐步增加 
             shader.setFloat("metallic", (float)row / (float)nrRows);
             for (int col = 0; col < nrColumns; ++col) 
             {
@@ -170,13 +223,17 @@ int main()
             newPos = lightPositions[i];
             shader.setVec3("lightPositions[" + std::to_string(i) + "]", newPos);
             shader.setVec3("lightColors[" + std::to_string(i) + "]", lightColors[i]);
-
+			shader.setBool("showD", false);
+			shader.setBool("showF", false);
+			shader.setBool("showG", false);
             model = glm::mat4(1.0f);
             model = glm::translate(model, newPos);
             model = glm::scale(model, glm::vec3(0.5f));
             shader.setMat4("model", model);
             renderSphere();
         }
+
+		dump();
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -205,6 +262,33 @@ void processInput(GLFWwindow *window)
         camera.ProcessKeyboard(LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         camera.ProcessKeyboard(RIGHT, deltaTime);
+
+#define MyKeyHandler(KEY, VARIABLE, V1, V2) \
+		static bool sKeyPress = false; \
+		bool KeyPressed = glfwGetKey(window, KEY);\
+		if (KeyPressed == GLFW_PRESS && !sKeyPress)\
+		{\
+			VARIABLE = !VARIABLE;\
+			V1 = false; \
+			V2 = false; \
+			sKeyPress = true;\
+		}\
+		else if (KeyPressed == GLFW_RELEASE)\
+		{\
+			sKeyPress = false;\
+		}
+
+	{
+		MyKeyHandler(GLFW_KEY_N, gShowD, gShowF, gShowG);
+	}
+	{
+		MyKeyHandler(GLFW_KEY_F, gShowF, gShowD, gShowG);
+	}
+	{
+		MyKeyHandler(GLFW_KEY_G, gShowG, gShowF, gShowD);
+	}
+ 
+
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes

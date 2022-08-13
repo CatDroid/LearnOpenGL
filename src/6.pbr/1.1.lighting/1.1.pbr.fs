@@ -16,6 +16,10 @@ uniform vec3 lightColors[4];
 
 uniform vec3 camPos;
 
+uniform bool showD;
+uniform bool showF;
+uniform bool showG;
+
 const float PI = 3.14159265359;
 // ----------------------------------------------------------------------------
 // 从统计学上来估算在受到表面粗糙度的影响下，取向与中间向量一致的微平面的数量 
@@ -112,7 +116,12 @@ void main()
 
     // reflectance equation 反射率方程
     vec3 Lo = vec3(0.0);
-    for(int i = 0; i < 4; ++i) 
+	bool debugShow =  (showD||showF||showG);
+	int lightNum =debugShow? 1:4;
+	float NDF  ;
+	float G  ;
+	vec3 F  ; // 菲涅尔方程是返回vec3的 代表RGB三种波长的反射率 
+    for(int i = 0; i < lightNum; ++i) 
     {
         // calculate per-light radiance
         vec3 L = normalize(lightPositions[i] - WorldPos);
@@ -124,10 +133,13 @@ void main()
         vec3 radiance = lightColors[i] * attenuation;
 
         // Cook-Torrance BRDF
-        float NDF = DistributionGGX(N, H, roughness);   
-        float G     = GeometrySmith(N, V, L, roughness);      
-        vec3 F     = fresnelSchlick(clamp(dot(H, V), 0.0, 1.0), F0);
-           
+        NDF = DistributionGGX(N, H, roughness);   // 金属度没有关系
+        G     = GeometrySmith(N, V, L, roughness);  // 金属度没有关系   
+        F     = fresnelSchlick(clamp(dot(H, V), 0.0, 1.0), F0); // 金属度有关,粗糙度无关
+        //F     = fresnelSchlick(clamp(dot(N, V), 0.0, 1.0), F0); 
+		// 改成N和V的话, 菲涅尔会更加明显,掠射角明显白色
+		// 如果是dot(H,V) 那么跟物体的角度(法向量无关,整个圆球都一样)就没有关系了,只跟光线和视线夹角一半和粗糙度有关
+		
         vec3 numerator    = NDF * G * F; 
         float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001; 
 		// + 0.0001 to prevent divide by zero 避免除0 
@@ -165,6 +177,7 @@ void main()
 
     vec3 color = ambient + Lo; // 环境光+辐照度
 
+
 	// ------------------------------------------------------------------
 	// 线性空间和HDR渲染
 
@@ -175,8 +188,27 @@ void main()
 	//     输入超出1.0    占了输出值域的0.5~1.0)
     color = color / (color + vec3(1.0));
 
+	if (debugShow) // debug的时候
+	{
+		if (showD)
+		{
+			color = color*0.00000001 + vec3(NDF, NDF, NDF);
+		}
+		else if(showF)
+		{
+			color = color*0.00000001 + F;
+		}
+		else if(showG)
+		{
+			// 如果做了伽马校正,  粗糙度在0.2和0.8都看不出教程上的明显变化
+			color = color*0.00000001 + vec3(G, G, G);
+		}
+	}
+
     // gamma correct 伽马矫正
     color = pow(color, vec3(1.0/2.2)); 
+
+
 
     FragColor = vec4(color, 1.0);
 }
