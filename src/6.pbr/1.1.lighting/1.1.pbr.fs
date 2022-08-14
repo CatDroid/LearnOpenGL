@@ -99,6 +99,7 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
 {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 	//return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0); // clamp?防止黑点??NaN??
+	// pow(x,y)函数不能计算负数的幂, 它返回 NaN, x<0或者x=0,y<=0 都是NaN
 }
 // ----------------------------------------------------------------------------
 void main()
