@@ -88,6 +88,8 @@ int main()
     shader.setInt("roughnessMap", 3);
     shader.setInt("aoMap", 4);
 
+	// PBR材质纹理--都是没有设置SRGB
+	// 
     // load PBR material textures
     // --------------------------
     unsigned int albedo    = loadTexture(FileSystem::getPath("resources/textures/pbr/rusted_iron/albedo.png").c_str());
@@ -101,7 +103,7 @@ int main()
     glm::vec3 lightPositions[] = {
         glm::vec3(0.0f, 0.0f, 10.0f),
     };
-    glm::vec3 lightColors[] = {
+    glm::vec3 lightColors[] = { // 注意! 光源的颜色是超过1.0的！
         glm::vec3(150.0f, 150.0f, 150.0f),
     };
     int nrRows = 7;
@@ -269,7 +271,7 @@ void renderSphere()
         std::vector<glm::vec3> positions;
         std::vector<glm::vec2> uv;
         std::vector<glm::vec3> normals;
-        std::vector<unsigned int> indices;
+        std::vector<unsigned int> indices; // 注意这里没有生成切线
 
         const unsigned int X_SEGMENTS = 64;
         const unsigned int Y_SEGMENTS = 64;
