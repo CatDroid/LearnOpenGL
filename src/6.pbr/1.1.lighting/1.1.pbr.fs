@@ -146,19 +146,39 @@ void main()
 		//
 		// 对于每个灯光，我们要计算完整的 Cook-Torrance 镜面反射 BRDF 项
 		//
+		// 首先，我们询问有多少微表面区域的法线与 H 完全对齐（因为，只有当微表面的法线与 H 对齐时，我们才能看到光）
+		// 这就是法线分布函数的作用。 NDF（H，N，粗糙度）。这意味着所有剩余的微表面都具有 H 的法线。
+		//
         NDF = DistributionGGX(N, H, roughness);   // 金属度没有关系
+		//
+		//  接下来我们询问微表面区域在观察方向上自阴影或被遮挡的程度。这就是几何函数的作用。 G（V、L、N、H、粗糙度）
+		//
         G     = GeometrySmith(N, V, L, roughness);  // 金属度没有关系   
 		// 菲涅耳方程:计算镜面反射和漫反射之间的比率(或者表面反射光的程度与折射光的程度)
 		//                漫反射 是由于折射, 没被吸收和穿透, 次表面反射形成的
+		//
+		//  最后我们询问菲涅耳衰减对微表面反射的影响有多大
+		//      你说"官方说菲涅耳是基于 N 和 V 之间的角度"并没有错，
+		//      但请记住，我们正在使用"恰好等于 H 的微表面法线"进行测试，否则它不会通过 NDF 测试。     
+		//      因此，当我们将 H 传递给菲涅耳函数时，我们只是传递了"微观表面法线"，而不是"宏观表面法线"。
+		//     (???因为剩下的微表面, 他们的法线N应该就是H(N的方向跟H方向一致), 所以传入H代表传入微表面的法线)
+		//     (一个片段包含了很多微表面, 上面计算的N其实是这个片段/表面的法线, 但能看到的只有那些等于Half向量的微表面)
+		//     关于菲涅耳方程中粗糙度值的使用，
+		//     当我们乘以 NDF 和 G 时，已经考虑了所有粗糙度属性。 阴影，遮挡，法线分布，已经被考虑在内。
+		//    
+		//
         F     = fresnelSchlick(clamp(dot(H, V), 0.0, 1.0), F0); // 金属度有关,粗糙度无关
         //F     = fresnelSchlick(clamp(dot(N, V), 0.0, 1.0), F0); 
 		// 改成N和V的话, 菲涅尔会更加明显,掠射角明显白色
 		// 如果是dot(H,V) 那么跟物体的角度(法向量无关,整个圆球都一样)就没有关系了,只跟光线和视线夹角一半和粗糙度有关
 		//F     = fresnelSchlick(dot(H, V), F0);
+		// https://learnopengl.com/PBR/Lighting
+		// Josh Edmondson 讨论传入HdotV还是NdotV(强烈的菲涅尔高光)
 
         vec3 numerator    = NDF * G * F; 
         float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001; 
 		// + 0.0001 to prevent divide by zero 避免除0 
+		// -- 去掉之后很大块黑块, 在4个灯光任何一个满足N*L大于90的片段都是NaN 
         vec3 specular = numerator / denominator;
         
         // (kS等价于F)  kS 反射部分占入射光线的比例  kD 折射部分(引起漫反射部分, 剩下的光能会被折射)
@@ -183,7 +203,9 @@ void main()
         Lo += (lambertDiffuse + specular) * radiance * NdotL;  // dw=1 
 		// note that we already multiplied the BRDF by the Fresnel (kS) so we won't multiply by kS again
 		// fr = kD * f_lambert +  kS * f_cook_torrance
-		// ?? 这样说 kS 就是 已经包含在 f_cook_torrance中的 F ??  代码上也把kS=F ？  
+		// ?? 这样说 kS 就是 已经包含在 f_cook_torrance中的 F ??  代码上也把kS=F ？
+		// https://learnopengl.com/PBR/Lighting discuss部分有讨论 vilbeyli   
+		// 有double multiplication 双倍乘法问题, 作者不太确认公式是否需要删除 
 	}   
     
 	// ------------------------------------------------------------------
