@@ -32,6 +32,9 @@ const float PI = 3.14159265359;
 //        最终会生成一个非常明亮的斑点
 float DistributionGGX(vec3 N, vec3 H, float roughness)
 {
+	// Disney 的调查并被 Epic Games 采用，
+	// 在几何函数和法线分布函数中, 对原始粗糙度值进行平方, 看起来更正确
+
     float a = roughness*roughness; // 注! 这里做了映射 
     float a2 = a*a;
     float NdotH = max(dot(N, H), 0.0);
@@ -95,17 +98,19 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 vec3 fresnelSchlick(float cosTheta, vec3 F0)
 {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+	//return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0); // clamp?防止黑点??NaN??
 }
 // ----------------------------------------------------------------------------
 void main()
 {		
     vec3 N = normalize(Normal);
     vec3 V = normalize(camPos - WorldPos);
-
+	//
 	// 计算法向入射的反射率 --- F0 基础反射率 
-    // calculate reflectance at normal incidence; 
-	// if dia-electric (like plastic) use F0 
-    // of 0.04 and if it's a metal, use the albedo color as F0 (metallic workflow)    
+	//
+	// 在 "PBR 金属工作流程"中，我们做了简化假设，
+	// 把 F0 设为常数 0.04，对大多数电介质表面在视觉上是正确的
+	// 对于 金属表面的 F0由反照率值albedo给出 
     vec3 F0 = vec3(0.04); 
     F0 = mix(F0, albedo, metallic); 
 	// 反射率，(albedo, F0,  Ks, kD, , 漫反射之间的关系)
@@ -130,28 +135,35 @@ void main()
         vec3 L = normalize(lightPositions[i] - WorldPos);
         vec3 H = normalize(V + L); // 半向量取 视线和光线 之间
 
+		//
 		// 辐射率  --- 辐射通量  立体角(球面度, 类似圆心角-弧度)
+		//
         float distance = length(lightPositions[i] - WorldPos);
-        float attenuation = 1.0 / (distance * distance);
-        vec3 radiance = lightColors[i] * attenuation;
+        float attenuation = 1.0 / (distance * distance);// 平方反比定律(物理学定律, 按照距离源的平方反比而下降)
+        vec3 radiance = lightColors[i] * attenuation; // 或用常数线性二次衰减方程(constant-linear-quadratic,)更多控制(物理不正确)
 
-        // Cook-Torrance BRDF
+		//
+		// 对于每个灯光，我们要计算完整的 Cook-Torrance 镜面反射 BRDF 项
+		//
         NDF = DistributionGGX(N, H, roughness);   // 金属度没有关系
         G     = GeometrySmith(N, V, L, roughness);  // 金属度没有关系   
+		// 菲涅耳方程:计算镜面反射和漫反射之间的比率(或者表面反射光的程度与折射光的程度)
+		//                漫反射 是由于折射, 没被吸收和穿透, 次表面反射形成的
         F     = fresnelSchlick(clamp(dot(H, V), 0.0, 1.0), F0); // 金属度有关,粗糙度无关
         //F     = fresnelSchlick(clamp(dot(N, V), 0.0, 1.0), F0); 
 		// 改成N和V的话, 菲涅尔会更加明显,掠射角明显白色
 		// 如果是dot(H,V) 那么跟物体的角度(法向量无关,整个圆球都一样)就没有关系了,只跟光线和视线夹角一半和粗糙度有关
-		
+		//F     = fresnelSchlick(dot(H, V), F0);
+
         vec3 numerator    = NDF * G * F; 
         float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001; 
 		// + 0.0001 to prevent divide by zero 避免除0 
         vec3 specular = numerator / denominator;
         
-        // kS is equal to Fresnel  kS 反射部分占入射光线的比例  kD 折射部分(引起漫反射部分)
-        vec3 kS = F;
+        // (kS等价于F)  kS 反射部分占入射光线的比例  kD 折射部分(引起漫反射部分, 剩下的光能会被折射)
+        vec3 kS = F;  
         // 为了能量守恒，漫反射光和镜面光不能超过1.0（除非表面发光）； 
-	    // 为了保持这种关系，漫反射分量 (kD) 应该等于 1.0 - kS
+	    // 为了保持这种关系，漫反射分量 (kD, 折射比) 应该等于 1.0 - kS
         vec3 kD = vec3(1.0) - kS;
         // multiply kD by the inverse metalness such that only non-metals 
         // have diffuse lighting, or a linear blend if partly metal (pure metals
@@ -167,7 +179,7 @@ void main()
 		vec3 lambertDiffuse = kD * f_lambert;
 
         // add to outgoing radiance Lo
-        Lo += (lambertDiffuse + specular) * radiance * NdotL;  
+        Lo += (lambertDiffuse + specular) * radiance * NdotL;  // dw=1 
 		// note that we already multiplied the BRDF by the Fresnel (kS) so we won't multiply by kS again
 		// fr = kD * f_lambert +  kS * f_cook_torrance
 		// ?? 这样说 kS 就是 已经包含在 f_cook_torrance中的 F ??  代码上也把kS=F ？  
@@ -184,8 +196,8 @@ void main()
 	// ------------------------------------------------------------------
 	// 线性空间和HDR渲染
 
-    // HDR tonemapping  色调映射
-	// Reinhard
+    // HDR tonemapping  色调映射 / tone or exposure map 曝光控制
+	// Reinhard 算子  保留"可能高度变化的辐照度"的高动态范围
 	//     形状类似过原点的log函数, 输出不超过1  
 	//     输入0~1        占了输出值域的0~0.5,
 	//     输入超出1.0    占了输出值域的0.5~1.0)
