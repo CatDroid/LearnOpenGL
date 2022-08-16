@@ -174,6 +174,9 @@ void main()
 		//F     = fresnelSchlick(dot(H, V), F0);
 		// https://learnopengl.com/PBR/Lighting
 		// Josh Edmondson 讨论传入HdotV还是NdotV(强烈的菲涅尔高光)
+		// 当HdotV=0时候, F=1, HdotV=0 就要半向量角和V夹角得到90度, 也就是光线水平射入?
+		// 或者理解为 经过 法线分布函数后, 只留下了H方向的微表面, 这样就相当于把当前的表面的法线是H, 而不是N了
+		// 所以菲尼尔要计算 新法线H 和 V的夹角
 
         vec3 numerator    = NDF * G * F; 
         float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001; 
