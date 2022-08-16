@@ -285,6 +285,7 @@ void renderQuad()
         tangent1.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
         tangent1.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
 		// tangent1 = glm::normalize(tangent1);
+		// f*相当于一个标量乘上去了, 所以如果要normalize的话,也可以不用乘以f
 
         bitangent1.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
         bitangent1.y = f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
