@@ -273,7 +273,12 @@ int main()
             pbrShader.setMat4("model", model);
             renderSphere();
         }
+        
+        // 天空盒在最后渲染(非透明通道) 避免overdraw
 
+        //glDepthFunc(GL_LEQUAL); // 修改对深度测试函数 少于等于
+        //glDepthFunc(GL_LESS);   // 因为天空盒的深度都是1 而GLCear默认也是1,需要改为<=
+        
         // render skybox (render as last to prevent overdraw)
         backgroundShader.use();
         backgroundShader.setMat4("view", view);
