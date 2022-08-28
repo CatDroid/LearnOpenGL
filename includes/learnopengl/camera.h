@@ -28,8 +28,8 @@ class Camera
 {
 public:
     // camera Attributes
-    glm::vec3 Position;
-    glm::vec3 Front;
+    glm::vec3 Position;// 位置坐标
+    glm::vec3 Front;   // 方向!! 不是坐标 
     glm::vec3 Up;      // 这个会根据Front来调整 
     glm::vec3 Right;
     glm::vec3 WorldUp; // 这个基本是固定的 不会调整
@@ -63,6 +63,7 @@ public:
     // returns the view matrix calculated using Euler Angles and the LookAt Matrix
     glm::mat4 GetViewMatrix()
     {
+		// glm::lookAt的参数是相机位置，目标位置(不是向量,内部会通过目标位置-相机位置得到forward方向向量), up方向向量
         return glm::lookAt(Position, Position + Front, Up); // 这里Center=Position+Front 
     }
 
