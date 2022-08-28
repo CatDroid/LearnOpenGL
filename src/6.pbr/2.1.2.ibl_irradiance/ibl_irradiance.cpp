@@ -34,6 +34,41 @@ bool firstMouse = true;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
+ 
+bool gFixAmbient    = false; // 固定的环境光 和 基于IBL的间接漫反射的环境光
+bool gRoughFresnel = false; // IBL环境光使用考虑粗糙度的菲涅尔公式
+bool gIrradianceMapAsSky = false;// 使用irradianceMap作为天空盒, 默认是hdr cubemap
+bool gNNormalize = false; // ps中Normal变量是否先做归一化(目前看效果差别比较大)
+
+void dump()
+{
+#define _TRACE_STR(s) #s
+#define TRACE_STR(s) _TRACE_STR(s)
+
+#define TRACE_DUMP(variable, keyStr, infoStr) static decltype(variable) sStatus = !variable;\
+	if (sStatus != variable)\
+	{\
+		sStatus = variable;\
+		printf("Press Key "  keyStr ", " TRACE_STR(variable) " = %d, " infoStr  "\n", variable);\
+	}
+
+	// 打印
+	{
+		 TRACE_DUMP(gFixAmbient, "F", "switch fix ambient and ibl ambient");
+	}
+	{
+		 TRACE_DUMP(gRoughFresnel, "R", "IBL use roguhness Fresnel");
+	}
+	{
+		TRACE_DUMP(gIrradianceMapAsSky, "I", "IrradianceMap as Sky");
+	}
+	{
+		TRACE_DUMP(gNNormalize, "N", "Normalize normal in ps");
+		
+	}
+	
+}
+
 int main()
 {
     // glfw: initialize and configure
@@ -268,13 +303,17 @@ int main()
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+		// 渲染场景
         // render scene, supplying the convoluted irradiance map to the final shader.
         // ------------------------------------------------------------------------------------------
         pbrShader.use();
         glm::mat4 view = camera.GetViewMatrix();
         pbrShader.setMat4("view", view);
         pbrShader.setVec3("camPos", camera.Position);
-
+		pbrShader.setBool("fixAmbient",    gFixAmbient);
+		pbrShader.setBool("roughFresnel", gRoughFresnel);
+		pbrShader.setBool("n_normalize", gNNormalize);
+		
         // bind pre-computed IBL data
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
@@ -301,7 +340,7 @@ int main()
             }
         }
 
-
+		// 渲染球状点光源
         // render light source (simply re-render sphere at light positions)
         // this looks a bit off as we use the same shader, but it'll make their positions obvious and 
         // keeps the codeprint small.
@@ -319,12 +358,20 @@ int main()
             renderSphere();
         }
 
+		// 渲染天空盒子
         // render skybox (render as last to prevent overdraw)
         backgroundShader.use();
         backgroundShader.setMat4("view", view);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
-        //glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap); // display irradiance map
+		if (!gIrradianceMapAsSky)
+		{
+			// 注:shader需要把HDR转换为LDR(tone+srgb)
+			glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap); // HDR环境立方体贴图--漫反射辐射率 
+		}
+		else
+		{
+			glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap); // display irradiance map
+		}
         renderCube();
 
 
@@ -332,6 +379,8 @@ int main()
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+		dump();
     }
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
@@ -355,6 +404,34 @@ void processInput(GLFWwindow *window)
         camera.ProcessKeyboard(LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         camera.ProcessKeyboard(RIGHT, deltaTime);
+
+#define MyKeyHandler(KEY, VARIABLE) \
+		static bool sKeyPress = false; \
+		bool KeyPressed = glfwGetKey(window, KEY);\
+		if (KeyPressed == GLFW_PRESS && !sKeyPress)\
+		{\
+			VARIABLE = !VARIABLE;\
+			sKeyPress = true;\
+		}\
+		else if (KeyPressed == GLFW_RELEASE)\
+		{\
+			sKeyPress = false;\
+		}
+
+	{
+		MyKeyHandler(GLFW_KEY_R, gRoughFresnel);
+	}
+	{
+		MyKeyHandler(GLFW_KEY_F, gFixAmbient);
+	}
+	{
+		MyKeyHandler(GLFW_KEY_I, gIrradianceMapAsSky);
+	}
+	{
+		MyKeyHandler(GLFW_KEY_N, gNNormalize);
+		
+	}
+
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes

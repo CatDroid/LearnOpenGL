@@ -34,10 +34,19 @@ void main()
             vec3 sampleVec = tangentSample.x * right + tangentSample.y * up + tangentSample.z * N; 
 
             irradiance += texture(environmentMap, sampleVec).rgb * cos(theta) * sin(theta);
+
+			// 积分改成黎曼和--离散
+
+			// +=  radiance(p, wi) * cos(theta) * sin(theta) * (2π/n1) * ((π/2)/n2)    * ( kd * c / π )
+
+			// 这里最后的结果不包含 kd * c ,  这两个参数跟物体材质相关 
+
             nrSamples++;
         }
     }
-    irradiance = PI * irradiance * (1.0 / float(nrSamples));
+    irradiance = PI * irradiance * (1.0 / float(nrSamples)); // nrSamples = n1*n2;
     
-    FragColor = vec4(irradiance, 1.0);
+    FragColor = vec4(irradiance, 1.0); 
+	// 该方向上的辐照度
+	// 反射方程中的 漫发射部分-- 与输出方向(视线方向)无关, 只跟入射方向和表面法线方向有关(跟Phong模型类似)
 }

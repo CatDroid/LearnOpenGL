@@ -125,7 +125,7 @@ int main()
 
     // pbr: load the HDR environment map
     // ---------------------------------
-    stbi_set_flip_vertically_on_load(true);
+    stbi_set_flip_vertically_on_load(true); // 注意这里把hdr纹理上下镜像了
     int width, height, nrComponents;
     float *data = stbi_loadf(FileSystem::getPath("resources/textures/hdr/newport_loft.hdr").c_str(), &width, &height, &nrComponents, 0);
     unsigned int hdrTexture;
@@ -167,6 +167,12 @@ int main()
     glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f); // 立方体的投影矩阵 比例是1:1 fov是90度
     glm::mat4 captureViews[] =
     {
+	  	/// @param eye Position of the camera (相机位置)
+	    /// @param center Position where the camera is looking at (目标位置)
+	    /// @param up Normalized up vector, how the camera is oriented. Typically (0, 0, 1) (up向量)
+
+		// mipmap每个方向的view，他的up的方向就是沿着RenderMan MinMap的UV轴的V轴方向
+
         glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
         glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
         glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f,  1.0f)),

@@ -19,6 +19,11 @@ uniform vec3 lightColors[4];
 
 uniform vec3 camPos;
 
+// debug 
+uniform bool fixAmbient; // false:ibl-ambient; true: fix ambient
+uniform bool roughFresnel;// false: fresnelSchlick; true: IBL漫反射的菲涅尔因子会考虑粗糙度
+uniform bool n_normalize;// false: 插值变量Normal 不做归一化
+
 const float PI = 3.14159265359;
 // ----------------------------------------------------------------------------
 float DistributionGGX(vec3 N, vec3 H, float roughness)
@@ -61,11 +66,37 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 // ----------------------------------------------------------------------------
+//  Fresnel-Schlick 方程中加入粗糙度项
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+	// 最大值变成了是光滑度 或者 F0 
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
+}   
+
+// ----------------------------------------------------------------------------
 void main()
 {		
     vec3 N = Normal;
+	if (n_normalize) 
+	{
+		N = normalize(Normal); // Fix: 做归一化之后效果不一样
+	}
+	/*
+	else 
+	{
+		if(gl_FragCoord.x < 400.0)
+		{
+			N = normalize(Normal);
+		}
+		else 
+		{
+		
+		}
+	}
+	*/
+	 
     vec3 V = normalize(camPos - WorldPos);
-    vec3 R = reflect(-V, N); 
+    //vec3 R = reflect(-V, N); 
 
     // calculate reflectance at normal incidence; if dia-electric (like plastic) use F0 
     // of 0.04 and if it's a metal, use the albedo color as F0 (metallic workflow)    
@@ -86,6 +117,7 @@ void main()
         // Cook-Torrance BRDF
         float NDF = DistributionGGX(N, H, roughness);   
         float G   = GeometrySmith(N, V, L, roughness);    
+		// 注: 以受粗糙度影响的微表面半向量作为菲涅耳公式的输入
         vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);        
         
         vec3 numerator    = NDF * G * F;
@@ -110,16 +142,35 @@ void main()
         Lo += (kD * albedo / PI + specular) * radiance * NdotL; // note that we already multiplied the BRDF by the Fresnel (kS) so we won't multiply by kS again
     }   
     
+	// 间接光照 --- 也包括漫反射和镜面反射两部分
+	//                  分割版的反射方程---漫反射部分   kD * irradiance * albedo; 
+
+	// 这里的irradiance是预计算的 间接漫反射  的辐照率(所有方向上的间接漫反射的黎曼和)
+
+	// 间接漫反射和间接镜面反射, 视为环境光
+
+	// 注: 这里重新再计算一次菲涅尔公式  得到间接光的 反射率 和 漫反射率/折射率
+	// 注: 这里菲涅尔公式 用的是表面的法线N( 上面直接光用的是半向量H )
+	// 注: 由于没有考虑表面的粗糙度，间接菲涅耳反射, 在粗糙非金属表面上看起来有点过强，但我们是期望较粗糙的表面在边缘反射较弱
     // ambient lighting (we now use IBL as the ambient term)
-    vec3 kS = fresnelSchlick(max(dot(N, V), 0.0), F0);
+    vec3 kS = roughFresnel? 
+					fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness) :
+					fresnelSchlick(max(dot(N, V), 0.0), F0);
     vec3 kD = 1.0 - kS;
-    kD *= 1.0 - metallic;	  
-    vec3 irradiance = texture(irradianceMap, N).rgb;
+    kD *= 1.0 - metallic;	 // 金属是没有漫反射的(这里就变成不贡献环境光了)
+    vec3 irradiance = texture(irradianceMap, N).rgb; // 辐照度图
     vec3 diffuse      = irradiance * albedo;
     vec3 ambient = (kD * diffuse) * ao;
     // vec3 ambient = vec3(0.002);
+
+	if (fixAmbient)
+	{
+		vec3 ambientFix = vec3(0.03) * albedo * ao;
+		ambient = ambientFix;
+	}
+	
     
-    vec3 color = ambient + Lo;
+    vec3 color = ambient + Lo; // 环境光(IBL-间接光漫反射)
 
     // HDR tonemapping
     color = color / (color + vec3(1.0));
