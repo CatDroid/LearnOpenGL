@@ -234,12 +234,25 @@ int main()
 
     // pbr: create an irradiance cubemap, and re-scale capture FBO to irradiance scale.
     // --------------------------------------------------------------------------------
+	//  辐照度-立方体贴图
+	//  1. 浮点纹理 RGB16F
+	//  2. 只有32x32小分辨率 (由于辐照度图对所有周围的辐射值取了平均值，因此它丢失了大部分高频细节)
+	//  3. 纹理 线性滤波
+	//  4. 只需深度附件,不用模板
+#define IRRADIANCE_MAP_SIZE 32
     unsigned int irradianceMap;
     glGenTextures(1, &irradianceMap);
     glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
     for (unsigned int i = 0; i < 6; ++i)
     {
-        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, 32, 32, 0, GL_RGB, GL_FLOAT, nullptr);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0,
+			GL_RGB16F, 
+			IRRADIANCE_MAP_SIZE, 
+			IRRADIANCE_MAP_SIZE, 
+			0, 
+			GL_RGB,
+			GL_FLOAT,
+			nullptr);
     }
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -249,7 +262,10 @@ int main()
 
     glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
     glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, 32, 32);
+    glRenderbufferStorage(GL_RENDERBUFFER, 
+		GL_DEPTH_COMPONENT24, 
+		IRRADIANCE_MAP_SIZE, 
+		IRRADIANCE_MAP_SIZE);
 
     // pbr: solve diffuse integral by convolution to create an irradiance (cube)map.
     // -----------------------------------------------------------------------------

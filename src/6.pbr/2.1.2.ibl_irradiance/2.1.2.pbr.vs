@@ -15,7 +15,7 @@ void main()
 {
     TexCoords = aTexCoords;
     WorldPos = vec3(model * vec4(aPos, 1.0));
-    Normal = mat3(model) * aNormal;   
+    Normal = mat3(model) * aNormal;  // 世界的法线(没有做逆转置) 
 
     gl_Position =  projection * view * vec4(WorldPos, 1.0);
 }

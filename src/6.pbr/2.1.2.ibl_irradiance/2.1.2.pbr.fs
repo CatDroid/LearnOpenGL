@@ -150,15 +150,17 @@ void main()
 	// 间接漫反射和间接镜面反射, 视为环境光
 
 	// 注: 这里重新再计算一次菲涅尔公式  得到间接光的 反射率 和 漫反射率/折射率
-	// 注: 这里菲涅尔公式 用的是表面的法线N( 上面直接光用的是半向量H )
-	// 注: 由于没有考虑表面的粗糙度，间接菲涅耳反射, 在粗糙非金属表面上看起来有点过强，但我们是期望较粗糙的表面在边缘反射较弱
+	// 注: 这里菲涅尔公式 用的是表面的法线N( 上面直接光用的是半向量H ), 来模拟菲涅耳效应
+	//     (环境光，来自半球内围绕法线 N 的所有方向，因此没有一个确定的半向量)
+	// 注: 由于没有考虑表面的粗糙度，间接光的菲涅耳反射率总是会相对较高, 在粗糙非金属表面上看起来有点过强，
+	//     但我们是期望较粗糙的表面在边缘反射较弱(使用N,V计算菲涅尔反射率,导致非金属粗糙球体边界有明显白色(金属没有漫反射))
     // ambient lighting (we now use IBL as the ambient term)
     vec3 kS = roughFresnel? 
 					fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness) :
 					fresnelSchlick(max(dot(N, V), 0.0), F0);
     vec3 kD = 1.0 - kS;
     kD *= 1.0 - metallic;	 // 金属是没有漫反射的(这里就变成不贡献环境光了)
-    vec3 irradiance = texture(irradianceMap, N).rgb; // 辐照度图
+    vec3 irradiance = texture(irradianceMap, N).rgb; // 辐照度图 
     vec3 diffuse      = irradiance * albedo;
     vec3 ambient = (kD * diffuse) * ao;
     // vec3 ambient = vec3(0.002);
