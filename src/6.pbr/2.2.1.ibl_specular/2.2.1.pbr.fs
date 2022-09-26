@@ -77,8 +77,9 @@ void main()
     // calculate reflectance at normal incidence; if dia-electric (like plastic) use F0 
     // of 0.04 and if it's a metal, use the albedo color as F0 (metallic workflow)    
     vec3 F0 = vec3(0.04); 
-    F0 = mix(F0, albedo, metallic);
+    F0 = mix(F0, albedo, metallic); // 如果是金属,就会使用albedo作为其基础反射率;电介质则都用F0=0.04 
 
+	// 直接光照, 点光源 
     // reflectance equation
     vec3 Lo = vec3(0.0);
     for(int i = 0; i < 4; ++i) 
@@ -117,23 +118,28 @@ void main()
         Lo += (kD * albedo / PI + specular) * radiance * NdotL; // note that we already multiplied the BRDF by the Fresnel (kS) so we won't multiply by kS again
     }   
     
+	// 间接光照--- 环境光照 使用IBL得到
     // ambient lighting (we now use IBL as the ambient term)
+
+	// 1. 计算反射率(向量, 菲涅尔公式, 考虑粗糙度)
     vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
     
     vec3 kS = F;
     vec3 kD = 1.0 - kS;
-    kD *= 1.0 - metallic;	  
+    kD *= 1.0 - metallic;	// 金属度 相当于吸收了折射的光线, kD会减少了, 漫反射(折射中的部分)+镜面反射就不完全等于入射
     
+	// 2. 间接光照--漫反射部分,使用辐照度贴图 
     vec3 irradiance = texture(irradianceMap, N).rgb;
     vec3 diffuse      = irradiance * albedo;
     
+	// 3. 间接光照--镜面反射部分,使用分割求和近似法 预滤波积分图 cubemap + BRDF LUT(NdotV, roughness) 
     // sample both the pre-filter map and the BRDF lut and combine them together as per the Split-Sum approximation to get the IBL specular part.
-    const float MAX_REFLECTION_LOD = 4.0;
+    const float MAX_REFLECTION_LOD = 4.0; // LOD可以是0到4 5个mipmap级别
     vec3 prefilteredColor = textureLod(prefilterMap, R,  roughness * MAX_REFLECTION_LOD).rgb;    
-    vec2 brdf  = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
-    vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+    vec2 brdf  = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg; // BRDF Lut图
+    vec3 specular = prefilteredColor * (F * brdf.x + brdf.y); // 菲涅尔因子和菲涅尔偏差 得到 BRDF反射方程高光部分积分结果
 
-    vec3 ambient = (kD * diffuse + specular) * ao;
+    vec3 ambient = (kD * diffuse + specular) * ao; // 得到环境光照 
     
     vec3 color = ambient + Lo;
 
