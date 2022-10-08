@@ -42,7 +42,7 @@ vec3 ImportanceSampleGGX(vec2 Xi, vec3 N, float roughness)
 {
 	float a = roughness*roughness;
 	
-	float phi = 2.0 * PI * Xi.x;
+	float phi = 2.0 * PI * Xi.x; // 这个是GGX D法线分布函数 对应的pdf 
 	float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a*a - 1.0) * Xi.y));
 	float sinTheta = sqrt(1.0 - cosTheta*cosTheta);
 	
@@ -77,7 +77,7 @@ void main()
     {
         // generates a sample vector that's biased towards the preferred alignment direction (importance sampling).
         vec2 Xi = Hammersley(i, SAMPLE_COUNT);
-        vec3 H = ImportanceSampleGGX(Xi, N, roughness);
+        vec3 H = ImportanceSampleGGX(Xi, N, roughness);// 这里的N又是反射的方向 镜面反射方向
         vec3 L  = normalize(2.0 * dot(V, H) * H - V);
 
         float NdotL = max(dot(N, L), 0.0);
@@ -87,14 +87,21 @@ void main()
             float D   = DistributionGGX(N, H, roughness);
             float NdotH = max(dot(N, H), 0.0);
             float HdotV = max(dot(H, V), 0.0);
-            float pdf = D * NdotH / (4.0 * HdotV) + 0.0001; 
+            float pdf = D * NdotH / (4.0 * HdotV) + 0.0001; // 为什么不是D*cosθsinθ??
 
+			// 预过滤卷积时，不直接采样环境贴图，
+			// 而是基于积分的 PDF 和粗糙度采样环境贴图的 mipmap ，以减少伪像
+
+			// 概率低的采样向量  代表这个方向的采样比较少, 应该平均更大的区域, 也就要选择mipmap level更大(图更小)
+
+			// envCubemap 的分辨率是512x512
             float resolution = 512.0; // resolution of source cubemap (per face)
-            float saTexel  = 4.0 * PI / (6.0 * resolution * resolution);
-            float saSample = 1.0 / (float(SAMPLE_COUNT) * pdf + 0.0001);
+            float saTexel  = 4.0 * PI / (6.0 * resolution * resolution); // 1 / (6*size*size/4*π)
+            float saSample = 1.0 / (float(SAMPLE_COUNT) * pdf + 0.0001); // 1 / (N*pdf)
 
             float mipLevel = roughness == 0.0 ? 0.0 : 0.5 * log2(saSample / saTexel); 
             
+			// 选择 environmentMap 对应的 mipLevel 
             prefilteredColor += textureLod(environmentMap, L, mipLevel).rgb * NdotL;
             totalWeight      += NdotL;
         }

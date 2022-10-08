@@ -79,6 +79,9 @@ int main()
     glEnable(GL_DEPTH_TEST);
     // set depth function to less than AND equal for skybox depth trick.
     glDepthFunc(GL_LEQUAL);
+
+	//  GL_TEXTURE_CUBE_MAP_SEAMLESS，以为我们提供在立方体贴图的面之间进行正确过滤的
+	//  立方体的缝隙
     // enable seamless cubemap sampling for lower mip levels in the pre-filter map.
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
@@ -270,10 +273,12 @@ int main()
     prefilterShader.setInt("environmentMap", 0);
     prefilterShader.setMat4("projection", captureProjection);
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap); // 必须开启 三线性过滤!!
 
     glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
     unsigned int maxMipLevels = 5;
+
+	// 每个目标的mipmap level画一次 每个level画6个面
     for (unsigned int mip = 0; mip < maxMipLevels; ++mip)
     {
         // reisze framebuffer according to mip-level size.
@@ -288,7 +293,12 @@ int main()
         for (unsigned int i = 0; i < 6; ++i)
         {
             prefilterShader.setMat4("view", captureViews[i]);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, prefilterMap, mip);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, 
+				GL_COLOR_ATTACHMENT0, 
+				GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, // 控制cubemap的哪个面
+				prefilterMap, 
+				mip // 控制cubemap那个面下的哪个level
+			);
 
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             renderCube();
