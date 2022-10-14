@@ -35,6 +35,7 @@ vec3 ImportanceSampleGGX(vec2 Xi, vec3 N, float roughness)
 	H.y = sin(phi) * sinTheta;
 	H.z = cosTheta;
 	
+    // IntegrateBRDF的N 假设就是在z轴方向(0,0,1)
 	// from tangent-space H vector to world-space sample vector
 	vec3 up          = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
 	vec3 tangent   = normalize(cross(up, N));
@@ -68,6 +69,7 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 // ----------------------------------------------------------------------------
 vec2 IntegrateBRDF(float NdotV, float roughness)
 {
+    // 假设N在z轴,并且V在XOZ平面
     vec3 V;
     V.x = sqrt(1.0 - NdotV*NdotV);
     V.y = 0.0;
@@ -76,6 +78,7 @@ vec2 IntegrateBRDF(float NdotV, float roughness)
     float A = 0.0;
     float B = 0.0; 
 
+    // 假设N在z轴
     vec3 N = vec3(0.0, 0.0, 1.0);
     
     const uint SAMPLE_COUNT = 1024u;
@@ -83,10 +86,14 @@ vec2 IntegrateBRDF(float NdotV, float roughness)
     {
         // generates a sample vector that's biased towards the
         // preferred alignment direction (importance sampling).
+        // 低差异序列 代替均匀分布
         vec2 Xi = Hammersley(i, SAMPLE_COUNT);
+        // 生成符合 GGX法线分布pdf 的H向量
         vec3 H = ImportanceSampleGGX(Xi, N, roughness);
+        // 计算在H向量对应的入射光线方向
         vec3 L = normalize(2.0 * dot(V, H) * H - V);
 
+        // 因为N就是z轴, 单位向量与z轴内积结果 等于单位向量的z轴坐标
         float NdotL = max(L.z, 0.0);
         float NdotH = max(H.z, 0.0);
         float VdotH = max(dot(V, H), 0.0);
@@ -94,20 +101,37 @@ vec2 IntegrateBRDF(float NdotV, float roughness)
         if(NdotL > 0.0)
         {
             float G = GeometrySmith(N, V, L, roughness);
+            // G' = G / [ (n*h_k) (n*v)]
             float G_Vis = (G * VdotH) / (NdotH * NdotV);
+            // 菲涅尔公式 反射占入射光线的比例
             float Fc = pow(1.0 - VdotH, 5.0);
 
             A += (1.0 - Fc) * G_Vis;
             B += Fc * G_Vis;
         }
     }
+    
+    // 分离求和 DFG项目，主要把基础反射率F0, 提取出来(与材质相关)
+    // DFG =     F0    *   [ 1/N * ∑(1-Fc)G' ]  +   1/N * ∑(Fc)G'
+    //       ---材质相关---  ------- A ---------     ----- B -----
+    // G' = G * (v*h) / (n*h)(n*v)
+    // h方向 由法线分布函数GGX-NDF生成, 需要roughness和N两个参数
+    
+    // DFG 虽然要N方向，H方向，但是最终只要 N和V N和H V和H 的夹角关系,
+    //     而H是由N生成, 并且在N的周围，最后也只要H_V H_N的夹角, 所以N的具体方向(或者说所在坐标系)没有关系
+    //     Smith G几何项 也只跟 N_V N_L 夹角有关系
+    //     总结, 只要给出N_V夹角, 假设N=(0,0,1), 和V向量在XOZ平面 ==> V向量 ==> H向量 ==> L向量  ==> 得到N_H V_H, N_V N_L等夹角关系
+    //          加上rougness, 就可以得到 A(菲涅尔因子) 和 B(菲涅尔偏移)
+    
     A /= float(SAMPLE_COUNT);
     B /= float(SAMPLE_COUNT);
+    
     return vec2(A, B);
 }
 // ----------------------------------------------------------------------------
 void main() 
 {
+    // BRDF积分图 二维 参数是纹理坐标, 分别表示 NdotV 夹角, roughness粗糙度
     vec2 integratedBRDF = IntegrateBRDF(TexCoords.x, TexCoords.y);
     FragColor = integratedBRDF;
 }
