@@ -74,30 +74,32 @@ void main()
     vec3 V = normalize(camPos - WorldPos);
     vec3 R = reflect(-V, N); 
 
+    // 法向入射反射率: 如果是金属,就会使用albedo作为其基础反射率;电介质则都用F0=0.04
     // calculate reflectance at normal incidence; if dia-electric (like plastic) use F0 
     // of 0.04 and if it's a metal, use the albedo color as F0 (metallic workflow)    
     vec3 F0 = vec3(0.04); 
-    F0 = mix(F0, albedo, metallic); // 如果是金属,就会使用albedo作为其基础反射率;电介质则都用F0=0.04 
+    F0 = mix(F0, albedo, metallic);
 
 	// 直接光照, 点光源 
     // reflectance equation
     vec3 Lo = vec3(0.0);
-    for(int i = 0; i < 4; ++i) 
+    for(int i = 0; i < 4; ++i) // 4个点光源
     {
         // calculate per-light radiance
         vec3 L = normalize(lightPositions[i] - WorldPos);
         vec3 H = normalize(V + L);
+        
         float distance = length(lightPositions[i] - WorldPos);
         float attenuation = 1.0 / (distance * distance);
-        vec3 radiance = lightColors[i] * attenuation;
+        vec3 radiance = lightColors[i] * attenuation;       // 没有用kD kQ 二次项 一次项 常数项的 点光源衰减
 
         // Cook-Torrance BRDF
-        float NDF = DistributionGGX(N, H, roughness);   
-        float G   = GeometrySmith(N, V, L, roughness);    
-        vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);        
+        float NDF = DistributionGGX(N, H, roughness);       // NDF 会过滤掉只剩下法线为H的微平面
+        float G   = GeometrySmith(N, V, L, roughness);      // Smith几何项 N_dot_V N_dot_L 有关系
+        vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);// F 项计算 用的是 微平面法线和视线的夹角 不是宏表面法线和视线夹角
         
         vec3 numerator    = NDF * G * F;
-        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001; // + 0.0001 to prevent divide by zero
+        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001; // + 0.0001 to prevent divide by zero 避免除零
         vec3 specular = numerator / denominator;
         
          // kS is equal to Fresnel
@@ -109,19 +111,22 @@ void main()
         // multiply kD by the inverse metalness such that only non-metals 
         // have diffuse lighting, or a linear blend if partly metal (pure metals
         // have no diffuse light).
+        // 金属没有漫反射
         kD *= 1.0 - metallic;	                
             
         // scale light by NdotL
         float NdotL = max(dot(N, L), 0.0);        
 
         // add to outgoing radiance Lo
-        Lo += (kD * albedo / PI + specular) * radiance * NdotL; // note that we already multiplied the BRDF by the Fresnel (kS) so we won't multiply by kS again
+        // note that we already multiplied the BRDF by the Fresnel (kS) so we won't multiply by kS again
+        Lo += (kD * albedo / PI + specular) * radiance * NdotL;
     }   
     
 	// 间接光照--- 环境光照 使用IBL得到
     // ambient lighting (we now use IBL as the ambient term)
 
 	// 1. 计算反射率(向量, 菲涅尔公式, 考虑粗糙度)
+    //    IBL漫反射部分 使用辐照度图的话，原来是把kD当做常数，没有放到辐照度图中，但是实际kD=1-Ks=1-F  F应该是 微表面法线H 和 视线V的夹角 
     vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
     
     vec3 kS = F;
