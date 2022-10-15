@@ -4,6 +4,7 @@ in vec3 WorldPos;
 
 uniform samplerCube environmentMap;
 uniform float roughness;
+uniform bool disableMipmapOnPrefilter;
 
 const float PI = 3.14159265359;
 // ----------------------------------------------------------------------------
@@ -99,6 +100,8 @@ void main()
         float NdotL = max(dot(N, L), 0.0);
         if(NdotL > 0.0)
         {
+		if (!disableMipmapOnPrefilter) 
+		{
 			// 根据GGX法线分布函数 得到法线N的宏表面上 H方向的微表面数量
             // sample from the environment's mip level based on roughness/pdf
             float D   = DistributionGGX(N, H, roughness);
@@ -131,6 +134,13 @@ void main()
 			// 选择 environmentMap 对应的 mipLevel 
             prefilteredColor += textureLod(environmentMap, L, mipLevel).rgb * NdotL;
 
+		    }
+			else
+			{
+			prefilteredColor += textureLod(environmentMap, L, 0.0).rgb * NdotL;
+			//prefilteredColor = prefilteredColor*0.000001 + vec3(totalWeight, 0.0, 0.0);
+
+			}
 			// 分离求和的 LD项  公式是 1/∑(n*lk)  * ∑ ( L(l) * (n*lk) )
             totalWeight      += NdotL;
         }

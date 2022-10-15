@@ -37,10 +37,13 @@ bool firstMouse = true;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
+#define CHECK_ERROR { auto __error = glGetError(); if (__error != GL_NO_ERROR) printf("gl Error %d at line %d\n", __error, __LINE__); }
+
+
 bool g_ShowBRDFLut = false;   // IBL间接光光照 - 镜面反射部分 - BRDF 2D-LUT图
 bool g_ShowIrradiance = false; // IBL间接光光照 - 漫反射部分 - 辐照图环境立方体贴图
 bool g_ShowPrefilter = false;    // IBL间接光光照 - 镜面反射部分 - 预滤波环境立方体贴图 
- 
+bool g_DisableMipmapOnPrefilter = false;// 关闭prefilter预计算过程中使用mipmap 
 
 void dump()
 {
@@ -366,45 +369,60 @@ int main()
 
     // pbr: run a quasi monte-carlo simulation on the environment lighting to create a prefilter (cube)map.
     // ----------------------------------------------------------------------------------------------------
-    prefilterShader.use();
-    prefilterShader.setInt("environmentMap", 0);
-    prefilterShader.setMat4("projection", captureProjection);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap); 
-	// 必须开启 三线性过滤!!(每次采样对应mip0的分辨率 得到sampleLevel)
+	auto makePrefilterCubeMap = [&prefilterShader, 
+									&captureProjection,
+									&envCubemap, 
+									&captureFBO, 
+									&captureRBO,
+									&captureViews,
+									&prefilterMap]
+	{
+		prefilterShader.use();
+		prefilterShader.setInt("environmentMap", 0);
+		prefilterShader.setMat4("projection", captureProjection);
+		prefilterShader.setBool("disableMipmapOnPrefilter", g_DisableMipmapOnPrefilter);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+		// 必须开启 三线性过滤!!(每次采样对应mip0的分辨率 得到sampleLevel)
 
-    glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
-    unsigned int maxMipLevels = 5;
+		glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+		unsigned int maxMipLevels = 5;
 
-	// 每个目标的mipmap level画一次 每个level画6个面
-    for (unsigned int mip = 0; mip < maxMipLevels; ++mip)
-    {
-        // reisze framebuffer according to mip-level size.
-		// 生成每个mipmap level对应大小的深度buffer
-        unsigned int mipWidth  = static_cast<unsigned int>(128 * std::pow(0.5, mip));
-        unsigned int mipHeight = static_cast<unsigned int>(128 * std::pow(0.5, mip));
-        glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, mipWidth, mipHeight);
-        glViewport(0, 0, mipWidth, mipHeight);
+		// 每个目标的mipmap level画一次 每个level画6个面
+		for (unsigned int mip = 0; mip < maxMipLevels; ++mip)
+		{
+			// reisze framebuffer according to mip-level size.
+			// 生成每个mipmap level对应大小的深度buffer
+			unsigned int mipWidth = static_cast<unsigned int>(128 * std::pow(0.5, mip));
+			unsigned int mipHeight = static_cast<unsigned int>(128 * std::pow(0.5, mip));
+			glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
+			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, mipWidth, mipHeight);
+			glViewport(0, 0, mipWidth, mipHeight);
 
-		// 粗糙度  0.0/4,  1.0/4,  2.0/4,  3.0/4,  4.0/4   
-        float roughness = (float)mip / (float)(maxMipLevels - 1);// 5-1=4
-        prefilterShader.setFloat("roughness", roughness);
-        for (unsigned int i = 0; i < 6; ++i)
-        {
-            prefilterShader.setMat4("view", captureViews[i]);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, 
-				GL_COLOR_ATTACHMENT0, 
-				GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,	// 控制cubemap的哪个面
-				prefilterMap, 
-				mip															// 画到mipmap特定mip level下
-			);
+			// 粗糙度  0.0/4,  1.0/4,  2.0/4,  3.0/4,  4.0/4   
+			float roughness = (float)mip / (float)(maxMipLevels - 1);// 5-1=4
+			prefilterShader.setFloat("roughness", roughness);
+			for (unsigned int i = 0; i < 6; ++i)
+			{
+				prefilterShader.setMat4("view", captureViews[i]);
+				glFramebufferTexture2D(GL_FRAMEBUFFER,
+					GL_COLOR_ATTACHMENT0,
+					GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,	// 控制cubemap的哪个面
+					prefilterMap,												// cubemap纹理id
+					mip															// 画到mipmap特定mip level下
+				);
 
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            renderCube();
-        }
-    }
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+				renderCube();
+			}
+		}
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	
+		CHECK_ERROR;
+ 
+	};
+   
+	makePrefilterCubeMap();
 
 	
 
@@ -458,12 +476,15 @@ int main()
     // then before rendering, configure the viewport to the original framebuffer's screen dimensions
     int scrWidth, scrHeight;
     glfwGetFramebufferSize(window, &scrWidth, &scrHeight);
-    glViewport(0, 0, scrWidth, scrHeight);
+   
 
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window))
     {
+
+		glViewport(0, 0, scrWidth, scrHeight);
+
         // per-frame time logic
         // --------------------
         float currentFrame = static_cast<float>(glfwGetTime());
@@ -523,11 +544,14 @@ int main()
         }
 
 		// 渲染掠射角方向看 的平面 (单面的，法线是y方向, 平面的下面是错误的)
+		// 按照  Moving Frostbite to PBR 这里真实的效果应该是 有点拉扯的, 
+		// 因为镜面反射波瓣越接近水平面, 水平方向会变窄拉长
+		// ??? 实际从HDR图片中的一些玻璃桌面 也没有看到这种拉长的现象 ???
 		model = glm::mat4(1.0f);
 		model = glm::translate(model, glm::vec3( 4.0, -2.0, 2.5f ));
 		pbrShader.setVec3("albedo", 1.0, 1.0, 1.0);
 		pbrShader.setMat4("model", model);
-		pbrShader.setFloat("roughness", 0.1f); // 模拟水面
+		pbrShader.setFloat("roughness", 0.1f); // 模拟光滑金属表面
 		pbrShader.setFloat("metallic", 1.0f);
 		renderQuad_Scene();
 		pbrShader.setVec3("albedo", BALL_COLOR);
@@ -579,7 +603,6 @@ int main()
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			renderQuad();
 		}
- 
 
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -589,6 +612,17 @@ int main()
 
 		// debug
 		dump();
+
+		CHECK_ERROR;
+		// 重新计算 预滤波环境立方体贴图
+		static decltype(g_DisableMipmapOnPrefilter) s_DisableMipmapOnPrefilter = g_DisableMipmapOnPrefilter;
+		if (g_DisableMipmapOnPrefilter != s_DisableMipmapOnPrefilter)
+		{
+			printf("re-maker prefilter cubemap\n");
+			s_DisableMipmapOnPrefilter = g_DisableMipmapOnPrefilter;
+			makePrefilterCubeMap();
+		}
+		CHECK_ERROR;
     }
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
@@ -637,7 +671,9 @@ void processInput(GLFWwindow *window)
 	{
 		MyKeyHandler(GLFW_KEY_B, g_ShowBRDFLut);
 	}
- 
+	{
+		MyKeyHandler(GLFW_KEY_M, g_DisableMipmapOnPrefilter);
+	}
 
 	#undef MyKeyHandler
 }
