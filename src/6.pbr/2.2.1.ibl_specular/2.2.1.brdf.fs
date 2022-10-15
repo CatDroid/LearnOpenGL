@@ -47,6 +47,12 @@ vec3 ImportanceSampleGGX(vec2 Xi, vec3 N, float roughness)
 // ----------------------------------------------------------------------------
 float GeometrySchlickGGX(float NdotV, float roughness)
 {
+    // Smith几何项, 在直接光光照 和  间接光光照 的k公式是不一样的
+	// Kdirect = (α + 1)^2 / 8 
+	// Kibl      = (α)^2       / 2 
+	// G_smith= G_ggx(n,v,k) * G_ggx (n,l,k)
+	// G_ggx   = (n*v) / [(n*v)(1-k) + k]
+
     // note that we use a different k for IBL
     float a = roughness;
     float k = (a * a) / 2.0;
