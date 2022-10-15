@@ -119,7 +119,7 @@ vec2 IntegrateBRDF(float NdotV, float roughness)
     
     // 分离求和 DFG项目，主要把基础反射率F0, 提取出来(与材质相关)
     // DFG =     F0    *   [ 1/N * ∑(1-Fc)G' ]  +   1/N * ∑(Fc)G'
-    //       ---材质相关---  ------- A ---------     ----- B -----
+    //       ---材质相关---  ------- A ---------          ----- B -----
     // G' = G * (v*h) / (n*h)(n*v)
     // h方向 由法线分布函数GGX-NDF生成, 需要roughness和N两个参数
     

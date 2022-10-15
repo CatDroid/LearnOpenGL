@@ -67,6 +67,9 @@ vec3 ImportanceSampleGGX(vec2 Xi, vec3 N, float roughness)
 	return normalize(sampleVec);
 }
 // ----------------------------------------------------------------------------
+// 生成 预滤波环境立方体贴图;  用宏表面的法线, 采样该 预滤波环境立方体贴图
+// 由于 这里假定了输出方向(视线方向)跟 宏表面法线 一样, 
+// 所以 即使在场景中, 视线以掠射角方向看过去, 采样 预滤波环境立方体贴图 结果还是以垂直方向 看向 宏表面
 void main()
 {		
     vec3 N = normalize(WorldPos);

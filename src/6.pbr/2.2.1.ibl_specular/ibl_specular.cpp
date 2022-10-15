@@ -26,7 +26,9 @@ const unsigned int SCR_WIDTH = 1280;
 const unsigned int SCR_HEIGHT = 720;
 
 // camera
-Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+//Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+Camera camera(glm::vec3(1.970174, -1.490174, 2.784516));
+
 float lastX = 800.0f / 2.0;
 float lastY = 600.0 / 2.0;
 bool firstMouse = true;
@@ -34,6 +36,79 @@ bool firstMouse = true;
 // timing
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
+
+bool g_ShowBRDFLut = false;   // IBL间接光光照 - 镜面反射部分 - BRDF 2D-LUT图
+bool g_ShowIrradiance = false; // IBL间接光光照 - 漫反射部分 - 辐照图环境立方体贴图
+bool g_ShowPrefilter = false;    // IBL间接光光照 - 镜面反射部分 - 预滤波环境立方体贴图 
+ 
+
+void dump()
+{
+	#define _TRACE_STR(s) #s
+	#define TRACE_STR(s) _TRACE_STR(s)
+
+	#define TRACE_DUMP(variable, keyStr, infoStr) static decltype(variable) sStatus = !variable;\
+		if (sStatus != variable)\
+		{\
+			sStatus = variable;\
+			printf("Press Key "  keyStr ", " TRACE_STR(variable) " = %d, " infoStr  "\n", variable);\
+		}
+
+		// 打印
+	{
+		TRACE_DUMP(g_ShowBRDFLut, "B", "Override to Display BRDF 2D-LUT (priority first)");
+	}
+	{
+		TRACE_DUMP(g_ShowIrradiance, "I", "Override to Display Irradiance cubemap(priority second)");
+	}
+	{
+		TRACE_DUMP(g_ShowPrefilter, "P", "Override to Display Prefilter cubemap(priority third)");
+	}
+ 
+
+	#undef _TRACE_STR
+	#undef TRACE_STR
+	#undef TRACE_DUMP
+
+}
+ 
+
+unsigned int quadVAO_Scene = 0;
+unsigned int quadVBO_Scene = 0;
+void renderQuad_Scene()
+{
+	if (quadVAO_Scene == 0)
+	{
+		/*
+			pbr.vs 
+			layout (location = 0) in vec3 aPos;
+			layout (location = 1) in vec3 aNormal;
+			layout (location = 2) in vec2 aTexCoords; // pbr.vs/ps都没有实际用
+		*/
+		float quadVertices[] = {
+			// positions          //Normal         // texture Coords
+			-1.0f, 0.0f,  1.0f,  0.0,1.0f, 0.0f,   0.0f, 1.0f,
+			-1.0f, 0.0f, -1.0f,  0.0,1.0f, 0.0f,   0.0f, 0.0f,
+			 1.0f, 0.0f,  1.0f,  0.0,1.0f, 0.0f,   1.0f, 1.0f,
+			 1.0f, 0.0f, -1.0f,  0.0,1.0f, 0.0f,   1.0f, 0.0f,
+		};
+		// setup plane VAO
+		glGenVertexArrays(1, &quadVAO_Scene);
+		glGenBuffers(1, &quadVBO_Scene);
+		glBindVertexArray(quadVAO_Scene);
+		glBindBuffer(GL_ARRAY_BUFFER, quadVBO_Scene);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+		glEnableVertexAttribArray(2);
+		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+	}
+	glBindVertexArray(quadVAO_Scene);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glBindVertexArray(0);
+}
 
 int main()
 {
@@ -80,8 +155,8 @@ int main()
     // set depth function to less than AND equal for skybox depth trick.
     glDepthFunc(GL_LEQUAL);
 
-	//  GL_TEXTURE_CUBE_MAP_SEAMLESS，以为我们提供在立方体贴图的面之间进行正确过滤的
-	//  立方体的缝隙
+	// 立方体贴图 常用 GL_CLAMP_TO_EDGE 
+	// 立方体的缝隙 GL_TEXTURE_CUBE_MAP_SEAMLESS，以为我们提供在立方体贴图的面之间进行正确过滤的
     // enable seamless cubemap sampling for lower mip levels in the pre-filter map.
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
@@ -97,9 +172,10 @@ int main()
     pbrShader.use();
     pbrShader.setInt("irradianceMap", 0);
     pbrShader.setInt("prefilterMap", 1);
-    pbrShader.setInt("brdfLUT", 2);
-    pbrShader.setVec3("albedo", 0.5f, 0.0f, 0.0f);
-    pbrShader.setFloat("ao", 1.0f);
+    pbrShader.setInt("brdfLUT", 2);					  // shader中sampler预先设置好 将要绑定的纹理单元
+	#define BALL_COLOR 0.5f, 0.0f, 0.0f
+    pbrShader.setVec3("albedo", BALL_COLOR); // abedo没有使用纹理 纯红色 
+    pbrShader.setFloat("ao", 1.0f);                      // 环境遮蔽
 
     backgroundShader.use();
     backgroundShader.setInt("environmentMap", 0);
@@ -135,16 +211,21 @@ int main()
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, 512, 512);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, captureRBO);
 
+
+
+
     // pbr: load the HDR environment map
     // ---------------------------------
-    stbi_set_flip_vertically_on_load(true);
+    stbi_set_flip_vertically_on_load(true); // 这里设置了上下镜像 
     int width, height, nrComponents;
+	// HDR环境贴图--等角矩形全景图 
     float *data = stbi_loadf(FileSystem::getPath("resources/textures/hdr/newport_loft.hdr").c_str(), &width, &height, &nrComponents, 0);
     unsigned int hdrTexture;
     if (data)
     {
         glGenTextures(1, &hdrTexture);
         glBindTexture(GL_TEXTURE_2D, hdrTexture);
+		// 半浮点数RGB 加载HDR图
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, data); // note how we specify the texture's data value to be float
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -159,6 +240,8 @@ int main()
         std::cout << "Failed to load HDR image." << std::endl;
     }
 
+	// HDR 环境立方体贴图(512x512 RGB 浮点数) 三线性采样mipmap 
+	//       (预滤波环境贴图会根据"每次采样的需要平均mip0的分辨率", 对抗可见点伪影 ??) 
     // pbr: setup cubemap to render to and attach to framebuffer
     // ---------------------------------------------------------
     unsigned int envCubemap;
@@ -171,7 +254,8 @@ int main()
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // enable pre-filter mipmap sampling (combatting visible dots artifact)
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	// enable pre-filter mipmap sampling (combatting visible dots artifact)
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     // pbr: set up projection and view matrices for capturing data onto the 6 cubemap face directions
@@ -207,10 +291,16 @@ int main()
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+	// 渲染完成之后,  对目标纹理(立方体贴图) 调用 glGenerateMipmap 生成mipmap
+	// !! 每次渲染完成(更新了mip0的图像)都要调用, 生成mipmap 
     // then let OpenGL generate mipmaps from first mip face (combatting visible dots artifact)
     glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
     glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 
+
+
+
+	// 间接光光照IBL-漫反射--预计算部分  辐照图立方体贴图(使用时，参数是宏表面法线, 不用粗糙度)
     // pbr: create an irradiance cubemap, and re-scale capture FBO to irradiance scale.
     // --------------------------------------------------------------------------------
     unsigned int irradianceMap;
@@ -218,6 +308,7 @@ int main()
     glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
     for (unsigned int i = 0; i < 6; ++i)
     {
+		// cubemap 只要 16x16  RGB 浮点 (不用mipmap)
         glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, 32, 32, 0, GL_RGB, GL_FLOAT, nullptr);
     }
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -227,7 +318,7 @@ int main()
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
-    glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
+    glBindRenderbuffer(GL_RENDERBUFFER, captureRBO); // 单纯的深度buffer
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, 32, 32);
 
     // pbr: solve diffuse integral by convolution to create an irradiance (cube)map.
@@ -236,7 +327,7 @@ int main()
     irradianceShader.setInt("environmentMap", 0);
     irradianceShader.setMat4("projection", captureProjection);
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap); // 环境立方体贴图
 
     glViewport(0, 0, 32, 32); // don't forget to configure the viewport to the capture dimensions.
     glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
@@ -246,10 +337,15 @@ int main()
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, irradianceMap, 0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+		// 在场景的中心, 渲染6个方向的场景(天空盒, 采样环境立方体贴图), 
         renderCube();
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+
+
+
+	// 间接光光照IBL-镜面反射--预计算部分--预滤波环境立方体贴图
     // pbr: create a pre-filter cubemap, and re-scale capture FBO to pre-filter scale.
     // --------------------------------------------------------------------------------
     unsigned int prefilterMap;
@@ -257,6 +353,7 @@ int main()
     glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
     for (unsigned int i = 0; i < 6; ++i)
     {
+		// 128x128 RGB 半浮点数 三线性滤波(最终PBR通过roughness进行SampleLevel) 
         glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, 128, 128, 0, GL_RGB, GL_FLOAT, nullptr);
     }
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -265,7 +362,7 @@ int main()
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // be sure to set minification filter to mip_linear 
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     // generate mipmaps for the cubemap so OpenGL automatically allocates the required memory.
-    glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+    glGenerateMipmap(GL_TEXTURE_CUBE_MAP); // 需要预先分配各mip level的内存
 
     // pbr: run a quasi monte-carlo simulation on the environment lighting to create a prefilter (cube)map.
     // ----------------------------------------------------------------------------------------------------
@@ -273,7 +370,8 @@ int main()
     prefilterShader.setInt("environmentMap", 0);
     prefilterShader.setMat4("projection", captureProjection);
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap); // 必须开启 三线性过滤!!
+    glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap); 
+	// 必须开启 三线性过滤!!(每次采样对应mip0的分辨率 得到sampleLevel)
 
     glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
     unsigned int maxMipLevels = 5;
@@ -282,22 +380,24 @@ int main()
     for (unsigned int mip = 0; mip < maxMipLevels; ++mip)
     {
         // reisze framebuffer according to mip-level size.
+		// 生成每个mipmap level对应大小的深度buffer
         unsigned int mipWidth  = static_cast<unsigned int>(128 * std::pow(0.5, mip));
         unsigned int mipHeight = static_cast<unsigned int>(128 * std::pow(0.5, mip));
         glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, mipWidth, mipHeight);
         glViewport(0, 0, mipWidth, mipHeight);
 
-        float roughness = (float)mip / (float)(maxMipLevels - 1);
+		// 粗糙度  0.0/4,  1.0/4,  2.0/4,  3.0/4,  4.0/4   
+        float roughness = (float)mip / (float)(maxMipLevels - 1);// 5-1=4
         prefilterShader.setFloat("roughness", roughness);
         for (unsigned int i = 0; i < 6; ++i)
         {
             prefilterShader.setMat4("view", captureViews[i]);
             glFramebufferTexture2D(GL_FRAMEBUFFER, 
 				GL_COLOR_ATTACHMENT0, 
-				GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, // 控制cubemap的哪个面
+				GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,	// 控制cubemap的哪个面
 				prefilterMap, 
-				mip // 控制cubemap那个面下的哪个level
+				mip															// 画到mipmap特定mip level下
 			);
 
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -306,11 +406,17 @@ int main()
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+	
+
+
+
+	// 间接光光照IBL-镜面反射--预计算部分--BRDF 2D LUT贴图
     // pbr: generate a 2D LUT from the BRDF equations used.
     // ----------------------------------------------------
     unsigned int brdfLUTTexture;
     glGenTextures(1, &brdfLUTTexture);
 
+	// 512x512  RG两个通道  半浮点  不需要三线性插值
     // pre-allocate enough memory for the LUT texture.
     glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16F, 512, 512, 0, GL_RG, GL_FLOAT, 0);
@@ -332,6 +438,13 @@ int main()
     renderQuad();
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
+
+	//
+	// ------ 上面是预计算部分 ------
+	// ------ 下面渲染场景       ------
+	//
 
 
     // initialize static shader uniforms before rendering
@@ -373,6 +486,10 @@ int main()
         pbrShader.setMat4("view", view);
         pbrShader.setVec3("camPos", camera.Position);
 
+		// printf("camera.Position = %f,%f,%f\n", camera.Position.x, camera.Position.y, camera.Position.z);
+
+
+		// 三个预计算的贴图
         // bind pre-computed IBL data
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
@@ -381,6 +498,8 @@ int main()
         glActiveTexture(GL_TEXTURE2);
         glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
 
+		// 自左到右 粗糙度上升
+		// 自下到上 越来越金属
         // render rows*column number of spheres with varying metallic/roughness values scaled by rows and columns respectively
         glm::mat4 model = glm::mat4(1.0f);
         for (int row = 0; row < nrRows; ++row)
@@ -389,7 +508,7 @@ int main()
             for (int col = 0; col < nrColumns; ++col)
             {
                 // we clamp the roughness to 0.025 - 1.0 as perfectly smooth surfaces (roughness of 0.0) tend to look a bit off
-                // on direct lighting.
+                // on direct lighting. 完全光滑的表面, 直接光照看不到任何东西(点很小)
                 pbrShader.setFloat("roughness", glm::clamp((float)col / (float)nrColumns, 0.05f, 1.0f));
 
                 model = glm::mat4(1.0f);
@@ -403,7 +522,17 @@ int main()
             }
         }
 
+		// 渲染掠射角方向看 的平面 (单面的，法线是y方向, 平面的下面是错误的)
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3( 4.0, -2.0, 2.5f ));
+		pbrShader.setVec3("albedo", 1.0, 1.0, 1.0);
+		pbrShader.setMat4("model", model);
+		pbrShader.setFloat("roughness", 0.1f); // 模拟水面
+		pbrShader.setFloat("metallic", 1.0f);
+		renderQuad_Scene();
+		pbrShader.setVec3("albedo", BALL_COLOR);
 
+		// 渲染光源本身
         // render light source (simply re-render sphere at light positions)
         // this looks a bit off as we use the same shader, but it'll make their positions obvious and 
         // keeps the codeprint small.
@@ -421,25 +550,45 @@ int main()
             renderSphere();
         }
 
+		// 渲染天空盒  debug: 显示辐照图立方体贴图, 预滤波环境立方体贴图(level?)
         // render skybox (render as last to prevent overdraw)
         backgroundShader.use();
         backgroundShader.setMat4("view", view);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
-        //glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap); // display irradiance map
-        //glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap); // display prefilter map
+	 
+		if (g_ShowIrradiance)
+		{
+			glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap); // display irradiance map
+		}
+		else if (g_ShowPrefilter)
+		{
+			glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap); // display prefilter map
+		}
+		else
+		{
+			glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+		}
+		 
         renderCube();
 
-
+		// debug: 显示BRDF图
         // render BRDF map to screen
-        //brdfShader.Use();
-        //renderQuad();
+		if (g_ShowBRDFLut)
+		{
+			brdfShader.use();
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			renderQuad();
+		}
+ 
 
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+		// debug
+		dump();
     }
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
@@ -463,6 +612,34 @@ void processInput(GLFWwindow *window)
         camera.ProcessKeyboard(LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         camera.ProcessKeyboard(RIGHT, deltaTime);
+
+
+
+	#define MyKeyHandler(KEY, VARIABLE) \
+		static bool sKeyPress = false; \
+		bool KeyPressed = glfwGetKey(window, KEY);\
+		if (KeyPressed == GLFW_PRESS && !sKeyPress)\
+		{\
+			VARIABLE = !VARIABLE;\
+			sKeyPress = true;\
+		}\
+		else if (KeyPressed == GLFW_RELEASE)\
+		{\
+			sKeyPress = false;\
+		}
+
+	{
+		MyKeyHandler(GLFW_KEY_I, g_ShowIrradiance);
+	}
+	{
+		MyKeyHandler(GLFW_KEY_P, g_ShowPrefilter);
+	}
+	{
+		MyKeyHandler(GLFW_KEY_B, g_ShowBRDFLut);
+	}
+ 
+
+	#undef MyKeyHandler
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes

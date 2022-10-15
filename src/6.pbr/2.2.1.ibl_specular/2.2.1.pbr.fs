@@ -158,7 +158,7 @@ void main()
 	// 预滤波积分图  LOD可以是0到4, 5个mipmap级别
     vec3 prefilteredColor = textureLod(prefilterMap, R,  roughness * MAX_REFLECTION_LOD).rgb; 
 	
-	// BRDF Lut图
+	// BRDF Lut图  s:宏观表面的法线N 与 视线夹角   t:粗糙度 
     vec2 brdf  = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg; 
 
 	 // 菲涅尔因子和菲涅尔偏差 得到 BRDF反射方程 镜面高光的 积分结果
