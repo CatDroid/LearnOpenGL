@@ -6,6 +6,6 @@ uniform mat4 projection;
 
 void main()
 {
-    gl_Position = projection * vec4(vertex.xy, 0.0, 1.0);
+    gl_Position = projection * vec4(vertex.xy, 0.0, 1.0); // z都是0 摄像机坐标系 正交投影   w=1
     TexCoords = vertex.zw;
 }
